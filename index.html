@@ -182,6 +182,12 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .theme:disabled:not(.on) { opacity: .5; }
 .order { margin: 0; padding-left: 1.6em; display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: 1.05rem; }
 .order li::marker { color: var(--accent); font-family: var(--f-mono); }
+.slip.withpic { flex-direction: row; align-items: center; gap: 12px; }
+.slip .txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pic { width: 52px; height: 52px; flex: none; border-radius: 10px; object-fit: cover; background: var(--raise); }
+.pic.emoji { display: grid; place-items: center; font-size: 1.8rem; line-height: 1; }
+.words .pic { width: 44px; height: 44px; margin-bottom: 6px; }
+.pass .slip.withpic { text-align: left; }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -225,7 +231,11 @@ const THEMES = {
     ["Bourré","Pompette","alcool"],["Fesses","Poitrine","corps"],["Drague","Flirt","séduction"],["Speed dating","Rendez-vous à l'aveugle","rencontre"],
     ["Lingerie","Nuisette","tenue"],["Jaloux","Possessif","défaut"],["Mytho","Hypocrite","défaut"],["Plan à trois","Partouze","nuit"],
     ["Love hotel","Motel","chambre"],["Shot","Cocktail","verre"],["After","Before","soirée"],["Fessée","Chatouilles","jeu"],
-    ["Gynécologue","Urologue","médecin"],["Test de grossesse","Pilule du lendemain","pharmacie"],["Body shot","Beer pong","soirée"],["Snapchat","OnlyFans","réseau"]
+    ["Gynécologue","Urologue","médecin"],["Test de grossesse","Pilule du lendemain","pharmacie"],["Body shot","Beer pong","soirée"],["Snapchat","OnlyFans","réseau"],
+    ["Enterrement","Crémation","mort"],["Cercueil","Urne","mort"],["Testament","Héritage","notaire"],["Croque-mort","Médecin légiste","métier"],
+    ["Cimetière","Morgue","mort"],["Corbillard","Ambulance","véhicule"],["Pierre tombale","Épitaphe","mort"],["Assurance vie","Héritage","argent"],
+    ["Scène de crime","Autopsie","enquête"],["Poison","Arsenic","meurtre"],["Tueur en série","Cannibale","fait divers"],["Guillotine","Chaise électrique","exécution"],
+    ["Faire-part de décès","Faire-part de mariage","courrier"],["Dernières volontés","Dernier repas","fin"],["Veuve noire","Mante religieuse","mari"],["Pacte avec le diable","Exorcisme","enfer"]
   ] },
   netflix: { label: "Netflix", desc: "Manga, Disney, séries, films", pairs: [
     ["Naruto","Sasuke","manga"],["Goku","Vegeta","manga"],["Luffy","Zoro","manga"],["Tanjiro","Nezuko","manga"],
@@ -241,6 +251,34 @@ const THEMES = {
   ] }
 };
 
+// A small picture for a word: Wikipedia thumbnail for Classique and Netflix, an emoji for Border.
+const WIKI_TITLE = { "Mercredi": "Mercredi Addams", "Morticia": "Morticia Addams", "L": "L (Death Note)", "Le Professeur": "La casa de papel",
+  "Berlin": "La casa de papel", "Eleven": "Onze (Stranger Things)", "Max": "Stranger Things", "Patrick": "Patrick Étoile", "Nala": "Le Roi lion",
+  "Lit": "Lit (meuble)", "Glace": "Crème glacée", "Orange": "Orange (fruit)", "Avocat": "Avocat (fruit)", "Mario": "Mario (personnage)",
+  "Sonic": "Sonic (personnage)", "Montre": "Montre (horlogerie)", "Roi": "Roi", "Matin": "Matin", "Soir": "Soir", "Basket": "Basket-ball",
+  "Volley": "Volley-ball", "Fusée": "Fusée (astronautique)", "Console": "Console de jeux vidéo", "Ordinateur": "Ordinateur", "Ski": "Ski alpin",
+  "Train": "Train", "Moto": "Motocyclette", "Vélo": "Bicyclette", "Glace ": "Crème glacée", "Max ": "Max", "Gru": "Gru (Moi, moche et méchant)",
+  "Minion": "Les Minions", "Stitch": "Stitch (Disney)", "Olaf": "Olaf (La Reine des neiges)", "Elsa": "Elsa (La Reine des neiges)",
+  "Ariel": "Ariel (Disney)", "Vaiana": "Vaiana, la légende du bout du monde", "Simba": "Simba", "Woody": "Woody (Toy Story)", "Buzz l'Éclair": "Buzz l'Éclair",
+  "Livaï": "Livaï Ackerman", "Eren": "Eren Jäger", "Tanjiro": "Tanjirō Kamado", "Nezuko": "Nezuko Kamado", "Chihiro": "Le Voyage de Chihiro",
+  "Totoro": "Mon voisin Totoro", "Le Roi Lion": "Le Roi lion", "Walter White": "Walter White (Breaking Bad)", "Jesse Pinkman": "Breaking Bad", "Dark": "Dark (série télévisée)" };
+const HINT_EMOJI = { appli: "📱", "téléphone": "📱", "réseau": "📲", "cœur": "💘", relation: "💋", couple: "💔", "séduction": "😏", rencontre: "☕",
+  "défaut": "😤", famille: "👪", alcool: "🍸", lendemain: "🤕", verre: "🥃", "soirée": "🪩", "fumée": "💨", peau: "💋", danse: "💃", accessoire: "⛓️",
+  "sous-vêtement": "👙", tenue: "👙", corps: "🍑", jeu: "🎲", nuit: "🌙", chambre: "🛏️", chaleur: "♨️", "précaution": "🛡️", pharmacie: "💊",
+  "médecin": "🩺", poils: "🪒", bruit: "💨", police: "🚓", geste: "🖕", mort: "💀", notaire: "📜", "métier": "⚰️", "véhicule": "🚑", argent: "💰",
+  "enquête": "🔍", meurtre: "☠️", "fait divers": "🔪", "exécution": "⚖️", courrier: "✉️", fin: "🕯️", mari: "🕷️", enfer: "😈" };
+const imgCache = {};
+function wordPic(word, hint, theme) {
+  if (theme === "border") return `<span class="pic emoji" aria-hidden="true">${HINT_EMOJI[hint] || "🃏"}</span>`;
+  if (!(word in imgCache)) {
+    imgCache[word] = "";
+    fetch("https://fr.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent((WIKI_TITLE[word] || word).replace(/ /g, "_")))
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (j && j.type !== "disambiguation" && j.thumbnail && j.thumbnail.source) { imgCache[word] = j.thumbnail.source; render(); } })
+      .catch(() => {});
+  }
+  return imgCache[word] ? `<img class="pic" src="${esc(imgCache[word])}" alt="" loading="lazy">` : `<span class="pic emoji" aria-hidden="true">🖼️</span>`;
+}
 const ROLE_LABEL = { civil: "Civil", uc: "Taupe", ghost: "Fantôme" };
 const POINTS = { civil: 2, uc: 10, ghost: 6 };
 const DEFAULT_SETTINGS = { uc: 1, ghost: 0, manches: 3, tours: 2, theme: "classique" };
@@ -476,7 +514,7 @@ function pub(t, obj, retain) { if (S.client && S.client.connected) S.client.publ
 function parse(buf) { try { const s = buf.toString(); return s ? JSON.parse(s) : null; } catch { return null; } }
 function connectTo(i, will) {
   return new Promise(resolve => {
-    const c = mqtt.connect(BROKERS[i], { clientId: "tp_" + rid(), clean: true, connectTimeout: 7000, reconnectPeriod: 2500, keepalive: 20, will });
+    const c = mqtt.connect(BROKERS[i], { clientId: "tp_" + rid(), clean: true, connectTimeout: 7000, reconnectPeriod: 2500, keepalive: 45, will });
     let done = false;
     const fail = () => { if (done) return; done = true; try { c.end(true); } catch {} resolve(null); };
     const t = setTimeout(fail, 8000);
@@ -534,6 +572,8 @@ async function hostRoom(name, resume) {
   });
   const announce = () => { pub(topic("host"), { on: true, at: Date.now() }, true); lastSent.clear(); broadcast(); };
   c.subscribe(topic("act"), { qos: 1 }, announce);
+  // Re-announce regularly: after a crash, the old connection's "gone" notice can arrive late and must not win.
+  const beat = setInterval(() => { if (S.client !== c) clearInterval(beat); else if (c.connected) pub(topic("host"), { on: true, at: Date.now() }, true); }, 10000);
   c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe(topic("act"), { qos: 1 }, announce); render(); } });
   S.net = "ok"; keepAwake(); persist(); refresh();
 }
@@ -564,10 +604,18 @@ async function joinRoom(code, name) {
     try { c.end(true); } catch {}
   }
   if (S.mode !== "guest" || S.code !== code) return;
-  if (!found) { S.net = "lost"; S.err = `Aucun salon ${code} ouvert. Vérifie le code, et que l'hôte a bien la page ouverte.`; render(); return; }
+  if (!found) {
+    S.net = "waiting"; S.err = ""; render();
+    setTimeout(() => { if (S.mode === "guest" && S.code === code && S.net === "waiting") joinRoom(code, name); }, 5000);
+    return;
+  }
   const c = found;
   wire(c, (t, m) => {
-    if (t === topic("host")) { if (!m || !m.on) { S.net = "lost"; S.err = "L'hôte a fermé le salon ou a perdu sa connexion."; render(); } else if (S.net === "lost") { S.net = "ok"; S.err = ""; hello(); render(); } return; }
+    if (t === topic("host")) {
+      if (!m || !m.on) { S.net = "hostaway"; render(); }
+      else if (S.net === "hostaway" || S.net === "lost") { S.net = "ok"; S.err = ""; hello(); render(); }
+      return;
+    }
     if (t !== topic("p", S.uid) || !m) return;
     if (m.t === "state") { S.room = m.s; S.net = "ok"; render(); }
     else if (m.t === "err") { S.err = m.m; render(); }
@@ -641,7 +689,9 @@ function viewHome() {
   </div>`;
 }
 function bar() {
-  const net = S.mode === "guest" && S.net === "lost" && S.room
+  const net = S.mode === "guest" && S.net === "hostaway" && S.room
+    ? `<div class="netbar"><span>L'hôte s'est absenté. La partie reprend toute seule dès son retour.</span></div>`
+    : S.mode === "guest" && S.net === "lost" && S.room
     ? `<div class="netbar"><span>Connexion perdue avec l'hôte.</span><button data-a="reconnect">Se reconnecter</button></div>`
     : !isLocal() && S.net === "reconnecting" ? `<div class="netbar"><span>Connexion instable, reconnexion…</span></div>` : "";
   return `<div class="bar">${isLocal() ? `<span class="label">Sur cet appareil</span>` : `<span class="label">Salon <span class="code">${esc(S.code)}</span></span>`}
@@ -706,8 +756,10 @@ function slip(uid, key) {
   const isGhost = mine.role === "ghost";
   const who = isLocal() ? `Mot de ${esc(nameOf(uid))}` : "Ton mot";
   if (!S.revealed) return `<button class="slip hidden" data-a="reveal" aria-pressed="false"><span class="label">${who}</span><span class="word">• • • • •</span><span class="sub">Touche pour l'afficher</span></button>`;
-  return `<button class="slip shown ${isGhost ? "ghostslip" : ""}" data-a="reveal" aria-pressed="true"><span class="label">${isGhost ? (isLocal() ? esc(nameOf(uid)) + " est le Fantôme" : "Tu es le Fantôme") : who}</span>
-    <span class="word">${esc(isGhost ? "Indice : " + r.words.hint : r.words[mine.role])}</span><span class="sub">Touche pour cacher</span></button>`;
+  const word = isGhost ? null : r.words[mine.role];
+  const pic = isGhost ? `<span class="pic emoji" aria-hidden="true">👻</span>` : wordPic(word, r.words.hint || "", r.settings.theme);
+  return `<button class="slip shown withpic ${isGhost ? "ghostslip" : ""}" data-a="reveal" aria-pressed="true">${pic}<span class="txt"><span class="label">${isGhost ? (isLocal() ? esc(nameOf(uid)) + " est le Fantôme" : "Tu es le Fantôme") : who}</span>
+    <span class="word">${esc(isGhost ? "Indice : " + r.words.hint : word)}</span><span class="sub">Touche pour cacher</span></span></button>`;
 }
 const mySlip = () => isLocal() ? "" : slip(S.uid, S.code + S.room.manche);
 function statusLine() {
@@ -815,8 +867,8 @@ function viewRoundEnd() {
   return `${bar()}${statusLine()}
   <div class="panel reveal stack"><p class="big win-${r.winner}">${title}</p>${r.lastOut ? `<div class="stack">${outLine(r.lastOut)}</div>` : ""}</div>
   <div class="panel"><h3>Les mots de la manche</h3>
-    <div class="words"><div class="c"><span class="label">Civils</span><b>${esc(r.words.civil)}</b></div>
-      <div class="u"><span class="label">Taupe</span><b>${esc(r.words.uc)}</b></div>
+    <div class="words"><div class="c">${wordPic(r.words.civil, r.words.hint, r.settings.theme)}<span class="label">Civils</span><b>${esc(r.words.civil)}</b></div>
+      <div class="u">${wordPic(r.words.uc, r.words.hint, r.settings.theme)}<span class="label">Taupe</span><b>${esc(r.words.uc)}</b></div>
       <div class="g"><span class="label">Indice Fantôme</span><b>${esc(r.words.hint)}</b></div></div>
     <ul class="players">${Object.entries(r.roles).map(([id, { role }]) => `<li><span class="name">${esc(nameOf(id))}${you(id)}</span><span class="tag ${role}">${ROLE_LABEL[role]}</span></li>`).join("")}</ul></div>
   <div class="panel"><h3>Scores</h3>${scoreList()}</div>
@@ -841,7 +893,10 @@ function render() {
   if (!S.mode) { html = viewHome(); screen = "home"; }
   else if (!S.room) {
     screen = "wait";
-    html = `${bar()}<div class="panel reveal stack"><p class="big">${S.net === "lost" ? "Pas de connexion" : "Connexion au salon…"}</p>
+    html = S.net === "waiting" ? `${bar()}<div class="panel reveal stack"><p class="big">En attente de l'hôte…</p>
+      <p class="muted">Le salon ${esc(S.code)} n'est pas ouvert pour l'instant. Nouvel essai toutes les 5 secondes : dès que l'hôte revient, tu rejoins automatiquement.</p>
+      <div class="row"><button class="ghost" data-a="leave">Retour</button></div></div>`
+      : `${bar()}<div class="panel reveal stack"><p class="big">${S.net === "lost" ? "Pas de connexion" : "Connexion au salon…"}</p>
       ${S.net === "lost" ? `${errLine()}<div class="row"><button class="primary" data-a="reconnect">Réessayer</button><button class="ghost" data-a="leave">Retour</button></div>` : `<p class="muted">Salon ${esc(S.code)}</p>`}</div>`;
   } else {
     screen = S.room.status + (S.room.status === "deal" ? S.room.deal + "" + S.dealReady : "");
@@ -921,6 +976,11 @@ S.prefill = /^[A-Z]{4}$/.test(qRoom) ? qRoom : "";
 const qB = parseInt(new URLSearchParams(location.search).get("b") || "", 10);
 S.brokerHint = Number.isInteger(qB) ? qB : null;
 render();
+(function autoResume() {
+  const savedGuest = lsGet("uc_guest");
+  if (S.savedHost && S.pseudo && (!S.prefill || S.prefill === S.savedHost.G.code)) { hostRoom(S.pseudo, S.savedHost.G); return; }
+  if (savedGuest && S.pseudo && (!S.prefill || S.prefill === savedGuest)) joinRoom(savedGuest, S.pseudo);
+})();
 </script>
 </body>
 </html>
