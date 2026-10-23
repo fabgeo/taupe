@@ -679,6 +679,10 @@ function apply(G, actor, a) {
       return "";
     }
     case "specials": if (host && FREQS.some(f => f[0] === a.value)) G.settings.specialsFreq = a.value; return "";
+    case "skipManche":
+      if (!host || !["deal", "clues", "vote", "result", "ghostGuess"].includes(st)) return "";
+      Object.assign(G, { status: "roundEnd", winner: "skipped", lastOut: null, lastVotes: null });
+      return "";
     case "newGame":
     case "replay": {
       if (!host) return "";
@@ -819,7 +823,7 @@ async function hostRoom(name, resume) {
     else if (m.t === "bye") { if (G.players[uid]) G.players[uid].online = false; }
     else if (m.t === "act" && G.players[uid]) {
       const a = m.a || {};
-      if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal", "toVote", "theme", "mime", "specials", "timer", "replay"].includes(a.type)) return;
+      if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal", "toVote", "theme", "mime", "specials", "timer", "replay", "skipManche"].includes(a.type)) return;
       const e = apply(G, uid, a);
       if (e) pub(topic("p", uid), { t: "err", m: e }, false);
       if (a.type === "leave") { lastSent.delete(uid); pub(topic("p", uid), null, true); }
@@ -1032,7 +1036,11 @@ const kickBtn = uid => `<button class="ghost x ${S.confirmKick === uid ? "danger
 function viewEdit() {
   const r = S.room, ps = players();
   const playing = id => (r.inRound || []).includes(id), out = id => playing(id) && !r.alive.includes(id);
+  const canSkip = ["deal", "clues", "vote", "result", "ghostGuess"].includes(r.status);
   return `${bar()}
+  ${canSkip ? `<div class="panel"><div class="status"><h2>Manche en cours</h2><span class="label">Manche ${r.manche} / ${r.settings.manches}</span></div>
+    <button class="${S.confirmSkip ? "danger" : "ghost"}" data-a="skipManche">${S.confirmSkip ? "Confirmer : passer la manche ?" : "⏭️ Passer cette manche"}</button>
+    <p class="small muted">Les mots et les rôles sont révélés, aucun point n'est compté, puis on passe à la manche suivante.</p></div>` : ""}
   <div class="panel"><div class="status"><h2>Joueurs</h2><span class="label"><b>${ps.length}</b> ${isLocal() ? "autour de la table" : "dans le salon"}</span></div>
     ${isLocal() ? `<div class="row"><input type="text" id="newPlayer" class="grow" maxlength="20" placeholder="Prénom du joueur à ajouter" data-enter="addPlayer" autocomplete="off">
       <button data-a="addPlayer">Ajouter</button></div>` : `<p class="small muted">Pour ajouter quelqu'un, envoie-lui le lien du salon : il rejoint et joue dès la manche suivante. « Exclure » renvoie un joueur hors du salon.</p>`}
@@ -1277,13 +1285,14 @@ function scoreList() {
 }
 function viewRoundEnd() {
   const r = S.room, last = r.manche >= r.settings.manches;
-  const title = { civils: "Les civils gagnent", imposteurs: "Les imposteurs gagnent", ghost: "Le Fantôme a deviné !", none: "Il n'y avait pas de Taupe !" }[r.winner];
+  const title = { civils: "Les civils gagnent", imposteurs: "Les imposteurs gagnent", ghost: "Le Fantôme a deviné !", none: "Il n'y avait pas de Taupe !", skipped: "Manche passée" }[r.winner];
   return `${bar()}${statusLine()}
   ${isHost() ? `<button class="primary" data-a="next">${last ? "Voir le classement final" : "Manche suivante"}</button>` : `<p class="small muted">L'hôte lance la suite…</p>`}
   ${errLine()}
   <div class="panel reveal stack"><p class="big win-${r.winner}">${title}</p>${r.lastOut ? `<div class="stack">${outLine(r.lastOut)}</div>` : ""}</div>
   ${specialBanner()}
   ${r.special === "traitor" && r.traitor ? `<p class="invite">🗡️ Le Traître était <b class="plain">${esc(nameOf(r.traitor))}${you(r.traitor)}</b>.</p>` : ""}
+  ${r.winner === "skipped" ? `<p class="small muted">L'hôte a passé cette manche : aucun point n'est compté.</p>` : ""}
   ${r.winner === "none" ? `<p class="small muted">${r.lastOut && !r.lastOut.tie ? `${esc(nameOf(r.lastOut.uid))} a été éliminé·e à tort et perd ${-POINTS.wrongVote * (r.special === "double" ? 2 : 1)} points.` : "Égalité : personne ne perd de points."}</p>` : ""}
   ${voteReveal()}
   ${r.words.custom && r.referee ? `<p class="small muted">Mots écrits par ${esc(nameOf(r.referee))}${you(r.referee)}, qui a arbitré cette manche.</p>` : ""}
@@ -1393,6 +1402,10 @@ const ACTIONS = {
   specials: el => send({ type: "specials", value: el.dataset.v }),
   timerStep: el => send({ type: "timer", delta: +el.dataset.d }),
   timerOff: () => send({ type: "timer", off: true }),
+  skipManche: () => {
+    if (!S.confirmSkip) { S.confirmSkip = true; render(); setTimeout(() => { if (S.confirmSkip) { S.confirmSkip = false; render(); } }, 4000); return; }
+    S.confirmSkip = false; S.editing = false; send({ type: "skipManche" });
+  },
   editOpen: () => { S.editing = true; S.err = ""; render(); },
   editClose: () => { S.editing = false; S.err = ""; render(); },
   peekStart: () => { S.peek = { step: "pick" }; render(); },
