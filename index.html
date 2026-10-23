@@ -245,6 +245,7 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .freq:disabled:not(.on) { opacity: .5; }
 .barbtns { gap: 8px; flex-wrap: nowrap; }
 .x.danger-soft { border-color: var(--mask); color: var(--mask); }
+.set > button.ghost { width: auto; height: auto; margin-top: 4px; padding: 8px 12px; font-size: .85rem; }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -502,7 +503,7 @@ function removePlayer(G, uid) {
   if (G.status === "ghostGuess" && G.lastOut?.uid === uid) G.status = "result";
   const w = G.special === "noTaupe" ? null : winnerFor(G);
   if (w && G.status !== "ghostGuess") { G.lastOut = G.lastOut || null; endManche(G, w); return; }
-  if (G.status === "vote" && G.votes.filter(v => v.manche === G.manche && v.cycle === G.cycle && G.alive.includes(v.uid)).length >= G.alive.length && G.alive.length) resolveVotes(G);
+  if (G.status === "vote" && G.alive.length && voteDecided(G)) resolveVotes(G);
 }
 function simulNext(G) {
   G.turnStart = Date.now(); G.tour++;
@@ -544,6 +545,14 @@ function eliminate(G, out) {
   if (role === "ghost") { G.status = "ghostGuess"; return; }
   const w = winnerFor(G);
   if (w) endManche(G, w); else G.status = "result";
+}
+// True when every vote is in, or when the leader can no longer be caught even if all remaining voters pick the runner-up.
+function voteDecided(G) {
+  const cast = G.votes.filter(v => v.manche === G.manche && v.cycle === G.cycle && G.alive.includes(v.uid) && G.alive.includes(v.target));
+  const left = G.alive.length - cast.length;
+  if (left <= 0) return true;
+  const counts = Object.values(cast.reduce((t, v) => (t[v.target] = (t[v.target] || 0) + 1, t), {})).sort((a, b) => b - a);
+  return (counts[0] || 0) > (counts[1] || 0) + left;
 }
 function resolveVotes(G) {
   const tally = {};
@@ -610,8 +619,7 @@ function apply(G, actor, a) {
       if (st !== "vote" || !G.alive.includes(actor) || !G.alive.includes(a.target) || a.target === actor) return "";
       G.votes = G.votes.filter(v => !(v.manche === G.manche && v.cycle === G.cycle && v.uid === actor));
       G.votes.push({ uid: actor, manche: G.manche, cycle: G.cycle, target: a.target });
-      const n = G.votes.filter(v => v.manche === G.manche && v.cycle === G.cycle && G.alive.includes(v.uid)).length;
-      if (n >= G.alive.length) resolveVotes(G);
+      if (voteDecided(G)) resolveVotes(G);
       return "";
     }
     case "resolve": if (host && st === "vote") resolveVotes(G); return "";
@@ -658,7 +666,13 @@ function apply(G, actor, a) {
     }
     case "delPair": G.custom = (G.custom || []).filter(c => !(c.id === a.id && (c.by === actor || host) && !c.used)); return "";
     case "mime": if (host) G.settings.mime = !G.settings.mime; return "";
-    case "timer": if (host && TIMERS.some(t => t[0] === a.value)) G.settings.timer = a.value; return "";
+    case "timer": {
+      if (!host) return "";
+      const cur = G.settings.timer ?? 30;
+      if (a.off) { if (cur) G.settings.lastTimer = cur; G.settings.timer = cur ? 0 : (G.settings.lastTimer || 30); }
+      else if (a.delta) G.settings.timer = cur ? Math.min(120, Math.max(5, cur + (a.delta > 0 ? 5 : -5))) : (G.settings.lastTimer || 30);
+      return "";
+    }
     case "specials": if (host && FREQS.some(f => f[0] === a.value)) G.settings.specialsFreq = a.value; return "";
     case "newGame":
       if (!host) return "";
@@ -986,11 +1000,11 @@ function settingsPanel() {
       }).join("")}</div>
       <span class="small muted">${{ off: "Aucune manche spéciale.", rare: "Environ une manche sur six.", normal: "Environ une manche sur quatre.", often: "Environ une manche sur deux.", always: "Chaque manche est spéciale." }[freqOf(S.room.settings)[0]]}
         Au programme : Fantôme surprise, Pas de Taupe, Traître${isLocal() ? "" : ", Chrono express"}, Points doublés.</span></div>
-    ${isLocal() ? "" : `<div class="stack"><span class="label">Chrono par indice</span>
-      <div class="freqs" role="radiogroup" aria-label="Chrono par indice">${TIMERS.map(([v, label]) => {
-        const on = (S.room.settings.timer ?? 30) === v;
-        return `<button class="freq ${on ? "on" : ""}" role="radio" aria-checked="${on}" data-a="timer" data-v="${v}" ${h ? "" : "disabled"}>${label}</button>`;
-      }).join("")}</div></div>`}
+    ${isLocal() ? "" : (() => { const t = S.room.settings.timer ?? 30; return `<div class="set"><span class="label">Chrono par indice</span>
+      <div class="ctl">${h ? `<button data-a="timerStep" data-d="-1" aria-label="Moins 5 secondes" ${t === 0 || t <= 5 ? "disabled" : ""}>−</button>` : ""}
+        <span class="val">${t ? t + " s" : "Sans"}</span>${h ? `<button data-a="timerStep" data-d="1" aria-label="Plus 5 secondes" ${t >= 120 ? "disabled" : ""}>+</button>` : ""}</div>
+      <span class="hint">${S.room.status === "lobby" ? "De 5 à 120 secondes, par pas de 5." : "Change tout de suite, même pour le tour en cours."}</span>
+      ${h ? `<button class="ghost" data-a="timerOff">${t ? "Enlever le chrono" : "Remettre le chrono"}</button>` : ""}</div>`; })()}
     ${isLocal() ? `<button class="toggle ${S.room.settings.mime ? "on" : ""}" data-a="mime" role="switch" aria-checked="${!!S.room.settings.mime}">
       <span><b>Mister Mime</b><span>À chaque manche, un joueur tiré au sort doit mimer ses indices, sans parler.</span></span><i></i></button>` : ""}
     <div class="settings">
@@ -1363,7 +1377,8 @@ const ACTIONS = {
   delPair: el => send({ type: "delPair", id: el.dataset.id }),
   mime: () => send({ type: "mime" }),
   specials: el => send({ type: "specials", value: el.dataset.v }),
-  timer: el => send({ type: "timer", value: +el.dataset.v }),
+  timerStep: el => send({ type: "timer", delta: +el.dataset.d }),
+  timerOff: () => send({ type: "timer", off: true }),
   editOpen: () => { S.editing = true; S.err = ""; render(); },
   editClose: () => { S.editing = false; S.err = ""; render(); },
   peekStart: () => { S.peek = { step: "pick" }; render(); },
