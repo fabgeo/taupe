@@ -243,6 +243,7 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .freq.on { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
 .freq:disabled { opacity: 1; cursor: default; }
 .freq:disabled:not(.on) { opacity: .5; }
+.barbtns { gap: 8px; flex-wrap: nowrap; }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -476,6 +477,28 @@ function speakingOrder(ids, roles, avoidFirst) {
   if (first < 0) first = Math.max(0, order.findIndex(ok));
   return order.slice(first).concat(order.slice(0, first));
 }
+// Someone leaves or is removed: keep the current manche playable.
+function removePlayer(G, uid) {
+  delete G.players[uid];
+  if (!(G.inRound || []).includes(uid)) return;
+  const idx = G.order.indexOf(uid);
+  G.order = G.order.filter(x => x !== uid); G.alive = G.alive.filter(x => x !== uid); G.inRound = G.inRound.filter(x => x !== uid);
+  delete G.roles[uid];
+  G.votes = G.votes.filter(v => !(v.manche === G.manche && v.cycle === G.cycle && (v.uid === uid || v.target === uid)));
+  if (G.mime === uid) G.mime = null;
+  if (G.traitor === uid) G.traitor = null;
+  if (G.status === "deal") { if (idx >= 0 && idx < G.deal) G.deal--; if (G.deal >= G.order.length) { G.status = "clues"; G.deal = 0; } return; }
+  if (!["clues", "vote", "result", "ghostGuess"].includes(G.status)) return;
+  if (G.status === "clues" && idx >= 0) {
+    if (idx < G.speaker) G.speaker--;
+    if (G.speaker >= G.order.length) { G.speaker = 0; G.tour++; if (G.tour > (G.toursNow || G.settings.tours)) { G.status = "vote"; G.tour = G.toursNow || G.settings.tours; } }
+    G.turnStart = Date.now();
+  }
+  if (G.status === "ghostGuess" && G.lastOut?.uid === uid) G.status = "result";
+  const w = G.special === "noTaupe" ? null : winnerFor(G);
+  if (w && G.status !== "ghostGuess") { G.lastOut = G.lastOut || null; endManche(G, w); return; }
+  if (G.status === "vote" && G.votes.filter(v => v.manche === G.manche && v.cycle === G.cycle && G.alive.includes(v.uid)).length >= G.alive.length && G.alive.length) resolveVotes(G);
+}
 function advance(G) {
   G.turnStart = Date.now();
   G.speaker++;
@@ -538,13 +561,14 @@ function apply(G, actor, a) {
       if (listPlayers(G).some(p => norm(p.name) === norm(name))) return "Ce prénom est déjà dans la liste.";
       const uid = "p" + rid(); G.players[uid] = { uid, name, joinedAt: Date.now(), online: true }; return "";
     }
-    case "leave": if (!host) delete G.players[actor]; return "";
-    case "kick": if (host && a.uid !== G.host) delete G.players[a.uid]; return "";
+    case "leave": if (!host) removePlayer(G, actor); return "";
+    case "kick": if (host && a.uid !== G.host) removePlayer(G, a.uid); return "";
     case "set": {
-      if (!host || st !== "lobby") return "";
+      if (!host) return "";
       const lim = { uc: [0, 6], ghost: [0, 4], manches: [1, 10], tours: [1, 5] }[a.key];
       if (!lim) return "";
       G.settings[a.key] = Math.min(lim[1], Math.max(lim[0], (G.settings[a.key] || 0) + (a.delta > 0 ? 1 : -1)));
+      if (a.key === "manches") G.settings.manches = Math.max(G.settings.manches, G.manche || 1);
       return "";
     }
     case "start": {
@@ -590,10 +614,12 @@ function apply(G, actor, a) {
       return "";
     case "toVote": if (host && st === "clues") Object.assign(G, { status: "vote", speaker: 0 }); return "";
     case "pass": if (st === "clues" && G.order[G.speaker] === actor) advance(G); return "";
-    case "theme": if (host && st === "lobby" && THEMES[a.value]) G.settings.theme = a.value; return "";
+    case "theme": if (host && THEMES[a.value]) G.settings.theme = a.value; return "";
     case "next":
       if (!host || st !== "roundEnd") return "";
-      if (G.manche >= G.settings.manches) G.status = "final"; else startManche(G, !!a.local);
+      if (G.manche >= G.settings.manches) { G.status = "final"; return ""; }
+      { const p = startProblem(G); if (p) return p + " Change les réglages ou les joueurs avant la manche suivante."; }
+      startManche(G, !!a.local);
       return "";
     case "chat": {
       const text = String(a.text ?? "").trim().slice(0, 120);
@@ -611,8 +637,8 @@ function apply(G, actor, a) {
       return "";
     }
     case "delPair": G.custom = (G.custom || []).filter(c => !(c.id === a.id && (c.by === actor || host) && !c.used)); return "";
-    case "mime": if (host && st === "lobby") G.settings.mime = !G.settings.mime; return "";
-    case "specials": if (host && st === "lobby" && FREQS.some(f => f[0] === a.value)) G.settings.specialsFreq = a.value; return "";
+    case "mime": if (host) G.settings.mime = !G.settings.mime; return "";
+    case "specials": if (host && FREQS.some(f => f[0] === a.value)) G.settings.specialsFreq = a.value; return "";
     case "newGame":
       if (!host) return "";
       Object.assign(G, { status: "lobby", manche: 0, scores: {}, clues: [], votes: [], inRound: [], order: [], alive: [],
@@ -895,7 +921,8 @@ function bar() {
     ? `<div class="netbar"><span>Connexion perdue avec l'hôte.</span><button data-a="reconnect">Se reconnecter</button></div>`
     : !isLocal() && S.net === "reconnecting" ? `<div class="netbar"><span>Connexion instable, reconnexion…</span></div>` : "";
   return `<div class="bar">${isLocal() ? `<span class="label">Sur cet appareil</span>` : `<span class="label">Salon <span class="code">${esc(S.code)}</span></span>`}
-    <button class="ghost" data-a="leave">Quitter</button></div>${net}`;
+    <span class="row barbtns">${isHost() && S.room && S.room.status !== "lobby" ? `<button class="ghost" data-a="editOpen">⚙️ Réglages</button>` : ""}
+    <button class="ghost" data-a="leave">Quitter</button></span></div>${net}`;
 }
 function stepper(key, label, hint) {
   const v = S.room.settings[key] ?? 0, h = isHost();
@@ -942,9 +969,25 @@ function settingsPanel() {
       ${stepper("manches", "Manches", "Nombre de parties jouées")}
       ${stepper("tours", "Tours de parole", isLocal() ? "Indices à l'oral avant le 1er vote" : "Avant le 1er vote, puis 1 après")}
     </div>
-    ${h ? `<button class="primary" data-a="start" ${prob ? "disabled" : ""}>Lancer la partie</button>
+    ${S.room.status !== "lobby" ? (prob ? `<p class="err">${esc(prob)}</p>` : "")
+      : h ? `<button class="primary" data-a="start" ${prob ? "disabled" : ""}>Lancer la partie</button>
       ${prob ? `<p class="small muted">${esc(prob)}</p>` : ""}` : `<p class="small muted">En attente du lancement par l'hôte…</p>`}
     ${errLine()}</div>`;
+}
+function viewEdit() {
+  const r = S.room, ps = players();
+  const playing = id => (r.inRound || []).includes(id), out = id => playing(id) && !r.alive.includes(id);
+  return `${bar()}
+  <div class="panel"><div class="status"><h2>Joueurs</h2><span class="label"><b>${ps.length}</b> ${isLocal() ? "autour de la table" : "dans le salon"}</span></div>
+    ${isLocal() ? `<div class="row"><input type="text" id="newPlayer" class="grow" maxlength="20" placeholder="Prénom du joueur à ajouter" data-enter="addPlayer" autocomplete="off">
+      <button data-a="addPlayer">Ajouter</button></div>` : `<p class="small muted">Pour ajouter quelqu'un, envoie-lui le lien du salon : il rejoint et joue dès la manche suivante.</p>`}
+    <ul class="players">${ps.map(p => `<li><span class="dot ${p.online === false ? "off" : ""}"></span><span class="name">${esc(p.name)}${you(p.uid)}</span>
+      <span class="tag">${!playing(p.uid) ? "Manche suivante" : out(p.uid) ? "Éliminé·e" : "En jeu"}</span>
+      ${p.uid !== S.uid && !(S.mode === "host" && p.uid === r.host) ? `<button class="ghost x" data-a="kick" data-u="${esc(p.uid)}">Retirer</button>` : ""}</li>`).join("")}</ul>
+    <p class="small muted">Un joueur ajouté entre dans la partie à la manche suivante. Un joueur retiré quitte tout de suite la manche en cours.</p></div>
+  ${settingsPanel()}
+  <p class="small muted">Les réglages s'appliquent à partir de la manche suivante, sans perdre les scores.</p>
+  <button class="primary" data-a="editClose">Retour au jeu</button>`;
 }
 function viewLobby() {
   const ps = players();
@@ -1177,6 +1220,7 @@ function viewRoundEnd() {
   <div class="panel"><h3>Scores</h3>${scoreList()}</div>
   ${chatPanel()}
   ${customPanel()}
+  ${errLine()}
   ${isHost() ? `<button class="primary" data-a="next">${last ? "Voir le classement final" : "Manche suivante"}</button>` : `<p class="small muted">L'hôte lance la suite…</p>`}
   ${wordsPanel()}`;
 }
@@ -1207,7 +1251,9 @@ function render() {
     screen = S.room.status + (S.room.status === "deal" ? S.room.deal + "" + S.dealReady : "");
     if (S.peek && (!isLocal() || !["clues", "vote", "result"].includes(S.room.status))) S.peek = null;
     if (S.peek) screen = "peek" + S.peek.step;
-    html = S.peek ? viewPeek() : ({ lobby: viewLobby, deal: viewDeal, clues: viewClues, vote: viewVote, result: viewResult, ghostGuess: viewGhostGuess, roundEnd: viewRoundEnd, final: viewFinal }[S.room.status] || viewLobby)();
+    if (S.editing && (!isHost() || S.room.status === "lobby")) S.editing = false;
+    if (S.editing) screen = "edit";
+    html = S.editing ? viewEdit() : S.peek ? viewPeek() : ({ lobby: viewLobby, deal: viewDeal, clues: viewClues, vote: viewVote, result: viewResult, ghostGuess: viewGhostGuess, roundEnd: viewRoundEnd, final: viewFinal }[S.room.status] || viewLobby)();
   }
   const chatEl = document.getElementById("chatList"), stick = !chatEl || chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 40;
   app.innerHTML = html;
@@ -1263,6 +1309,8 @@ const ACTIONS = {
   delPair: el => send({ type: "delPair", id: el.dataset.id }),
   mime: () => send({ type: "mime" }),
   specials: el => send({ type: "specials", value: el.dataset.v }),
+  editOpen: () => { S.editing = true; S.err = ""; render(); },
+  editClose: () => { S.editing = false; S.err = ""; render(); },
   peekStart: () => { S.peek = { step: "pick" }; render(); },
   peekPick: el => { S.peek = { step: "confirm", uid: el.dataset.u }; render(); },
   peekReady: () => { S.peek = { ...S.peek, step: "show", n: Date.now() }; render(); },
