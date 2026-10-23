@@ -237,6 +237,12 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .special span span { font-size: .82rem; color: var(--muted); }
 .traitor { font-size: .8rem; color: var(--mask); font-weight: 700; margin-top: 4px; }
 .toggle:disabled { opacity: 1; cursor: default; }
+.freqs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 420px) { .freqs { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.freq { padding: 9px 4px; font-size: .82rem; background: var(--bg); }
+.freq.on { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
+.freq:disabled { opacity: 1; cursor: default; }
+.freq:disabled:not(.on) { opacity: .5; }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -374,7 +380,7 @@ function wordPic(word, hint, theme) {
 }
 const ROLE_LABEL = { civil: "Civil", uc: "Taupe", ghost: "Fantôme" };
 const POINTS = { civil: 2, uc: 10, ghost: 6, traitor: 8, wrongVote: -3 };
-const DEFAULT_SETTINGS = { uc: 1, ghost: 0, manches: 3, tours: 2, theme: "classique", specials: true };
+const DEFAULT_SETTINGS = { uc: 1, ghost: 0, manches: 3, tours: 2, theme: "classique", specialsFreq: "normal" };
 const NS = "taupe-fabgeo-v1/";
 const BROKERS = window.TAUPE_BROKERS || ["wss://broker.emqx.io:8084/mqtt", "wss://broker.hivemq.com:8884/mqtt", "wss://test.mosquitto.org:8081/mqtt"];
 const LOCAL_HOST = "host";
@@ -387,6 +393,8 @@ const SPECIALS = {
   express: { label: "Chrono express", icon: "⚡", secret: false, desc: "10 secondes seulement pour écrire son indice." },
   double: { label: "Points doublés", icon: "✖️2", secret: false, desc: "Cette manche rapporte (et fait perdre) le double." }
 };
+const FREQS = [["off", "Jamais", 0], ["rare", "Rare", 1 / 6], ["normal", "Normal", .25], ["often", "Souvent", .5], ["always", "Toujours", 1]];
+const freqOf = s => (FREQS.find(f => f[0] === s.specialsFreq) || (s.specials === false ? FREQS[0] : FREQS[2]));
 const turnMs = r => r && r.special === "express" ? EXPRESS_MS : TURN_MS;
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -440,7 +448,7 @@ function startManche(G, local) {
   if (Math.random() < .5) [a, b] = [b, a];
   const roles = {};
   const n = ids.length, imp = s.uc + s.ghost;
-  const pool = !s.specials || Math.random() > .25 ? [] : ["noTaupe", "double",
+  const pool = Math.random() >= freqOf(s)[2] ? [] : ["noTaupe", "double",
     ...(n - imp - 1 > imp + 1 ? ["ghostPlus"] : []), ...(!local ? ["express"] : []), ...(imp >= 1 && n - imp >= 3 ? ["traitor"] : [])];
   const special = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
   const nUc = special === "noTaupe" ? 0 : s.uc, nGhost = special === "noTaupe" ? 0 : s.ghost + (special === "ghostPlus" ? 1 : 0);
@@ -604,7 +612,7 @@ function apply(G, actor, a) {
     }
     case "delPair": G.custom = (G.custom || []).filter(c => !(c.id === a.id && (c.by === actor || host) && !c.used)); return "";
     case "mime": if (host && st === "lobby") G.settings.mime = !G.settings.mime; return "";
-    case "specials": if (host && st === "lobby") G.settings.specials = !G.settings.specials; return "";
+    case "specials": if (host && st === "lobby" && FREQS.some(f => f[0] === a.value)) G.settings.specialsFreq = a.value; return "";
     case "newGame":
       if (!host) return "";
       Object.assign(G, { status: "lobby", manche: 0, scores: {}, clues: [], votes: [], inRound: [], order: [], alive: [],
@@ -919,8 +927,13 @@ function settingsPanel() {
       <div class="themes" role="radiogroup" aria-label="Thème des mots">${Object.entries(THEMES).map(([k, t]) =>
         `<button class="theme ${k === cur ? "on" : ""}" role="radio" aria-checked="${k === cur}" data-a="theme" data-v="${k}" ${h ? "" : "disabled"}>
           <b>${t.label}</b><span>${t.desc}</span></button>`).join("")}</div></div>
-    <button class="toggle ${S.room.settings.specials ? "on" : ""}" data-a="specials" role="switch" aria-checked="${!!S.room.settings.specials}" ${h ? "" : "disabled"}>
-      <span><b>Manches spéciales</b><span>Environ une manche sur quatre : Fantôme surprise, Pas de Taupe, Traître${isLocal() ? "" : ", Chrono express"}, Points doublés.</span></span><i></i></button>
+    <div class="stack"><span class="label">Manches spéciales</span>
+      <div class="freqs" role="radiogroup" aria-label="Fréquence des manches spéciales">${FREQS.map(([k, label]) => {
+        const on = freqOf(S.room.settings)[0] === k;
+        return `<button class="freq ${on ? "on" : ""}" role="radio" aria-checked="${on}" data-a="specials" data-v="${k}" ${h ? "" : "disabled"}>${label}</button>`;
+      }).join("")}</div>
+      <span class="small muted">${{ off: "Aucune manche spéciale.", rare: "Environ une manche sur six.", normal: "Environ une manche sur quatre.", often: "Environ une manche sur deux.", always: "Chaque manche est spéciale." }[freqOf(S.room.settings)[0]]}
+        Au programme : Fantôme surprise, Pas de Taupe, Traître${isLocal() ? "" : ", Chrono express"}, Points doublés.</span></div>
     ${isLocal() ? `<button class="toggle ${S.room.settings.mime ? "on" : ""}" data-a="mime" role="switch" aria-checked="${!!S.room.settings.mime}">
       <span><b>Mister Mime</b><span>À chaque manche, un joueur tiré au sort doit mimer ses indices, sans parler.</span></span><i></i></button>` : ""}
     <div class="settings">
@@ -1249,7 +1262,7 @@ const ACTIONS = {
   },
   delPair: el => send({ type: "delPair", id: el.dataset.id }),
   mime: () => send({ type: "mime" }),
-  specials: () => send({ type: "specials" }),
+  specials: el => send({ type: "specials", value: el.dataset.v }),
   peekStart: () => { S.peek = { step: "pick" }; render(); },
   peekPick: el => { S.peek = { step: "confirm", uid: el.dataset.u }; render(); },
   peekReady: () => { S.peek = { ...S.peek, step: "show", n: Date.now() }; render(); },
