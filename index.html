@@ -244,6 +244,7 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .freq:disabled { opacity: 1; cursor: default; }
 .freq:disabled:not(.on) { opacity: .5; }
 .barbtns { gap: 8px; flex-wrap: nowrap; }
+.x.danger-soft { border-color: var(--mask); color: var(--mask); }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -381,7 +382,7 @@ function wordPic(word, hint, theme) {
 }
 const ROLE_LABEL = { civil: "Civil", uc: "Taupe", ghost: "Fantôme" };
 const POINTS = { civil: 2, uc: 10, ghost: 6, traitor: 8, wrongVote: -3 };
-const DEFAULT_SETTINGS = { uc: 1, ghost: 0, manches: 3, tours: 2, theme: "classique", specialsFreq: "normal" };
+const DEFAULT_SETTINGS = { uc: 1, ghost: 0, manches: 3, tours: 2, theme: "classique", specialsFreq: "normal", timer: 30 };
 const NS = "taupe-fabgeo-v1/";
 const BROKERS = window.TAUPE_BROKERS || ["wss://broker.emqx.io:8084/mqtt", "wss://broker.hivemq.com:8884/mqtt", "wss://test.mosquitto.org:8081/mqtt"];
 const LOCAL_HOST = "host";
@@ -391,12 +392,15 @@ const SPECIALS = {
   ghostPlus: { label: "Fantôme surprise", icon: "👻", secret: true, desc: "Un Fantôme de plus que prévu s'était glissé parmi vous." },
   noTaupe: { label: "Pas de Taupe", icon: "🕊️", secret: true, desc: "Tout le monde avait le même mot. Le joueur éliminé perd des points." },
   traitor: { label: "Le Traître", icon: "🗡️", secret: true, desc: "Un civil connaissait les imposteurs et jouait pour eux." },
+  simul: { label: "Indices simultanés", icon: "🗳️", secret: false, desc: "Tout le monde écrit en même temps, et les indices sont révélés d'un coup." },
   express: { label: "Chrono express", icon: "⚡", secret: false, desc: "10 secondes seulement pour écrire son indice." },
   double: { label: "Points doublés", icon: "✖️2", secret: false, desc: "Cette manche rapporte (et fait perdre) le double." }
 };
 const FREQS = [["off", "Jamais", 0], ["rare", "Rare", 1 / 6], ["normal", "Normal", .25], ["often", "Souvent", .5], ["always", "Toujours", 1]];
 const freqOf = s => (FREQS.find(f => f[0] === s.specialsFreq) || (s.specials === false ? FREQS[0] : FREQS[2]));
-const turnMs = r => r && r.special === "express" ? EXPRESS_MS : TURN_MS;
+const TIMERS = [[0, "Sans"], [15, "15 s"], [30, "30 s"], [45, "45 s"], [60, "60 s"]];
+// Turn duration in ms, or 0 for no time limit.
+const turnMs = r => !r ? TURN_MS : r.special === "express" ? EXPRESS_MS : (r.settings?.timer ?? 30) * 1000;
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -450,7 +454,7 @@ function startManche(G, local) {
   const roles = {};
   const n = ids.length, imp = s.uc + s.ghost;
   const pool = Math.random() >= freqOf(s)[2] ? [] : ["noTaupe", "double",
-    ...(n - imp - 1 > imp + 1 ? ["ghostPlus"] : []), ...(!local ? ["express"] : []), ...(imp >= 1 && n - imp >= 3 ? ["traitor"] : [])];
+    ...(n - imp - 1 > imp + 1 ? ["ghostPlus"] : []), ...(!local ? ["express", "simul"] : []), ...(imp >= 1 && n - imp >= 3 ? ["traitor"] : [])];
   const special = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
   const nUc = special === "noTaupe" ? 0 : s.uc, nGhost = special === "noTaupe" ? 0 : s.ghost + (special === "ghostPlus" ? 1 : 0);
   ids.forEach((id, i) => { roles[id] = { role: i < nUc ? "uc" : i < nUc + nGhost ? "ghost" : "civil" }; });
@@ -467,6 +471,7 @@ const turnKey = r => `${r.manche}-${r.cycle}-${r.tour}-${r.speaker}`;
 function turnLeft() {
   const r = S.room;
   if (!r || r.status !== "clues" || isLocal()) return null;
+  if (!turnMs(r)) return null;
   if (S.mode === "host" && G) return turnMs(G) - (Date.now() - (G.turnStart || Date.now()));
   return S.deadline && S.deadline.key === turnKey(r) ? S.deadline.at - Date.now() : null;
 }
@@ -499,6 +504,12 @@ function removePlayer(G, uid) {
   if (w && G.status !== "ghostGuess") { G.lastOut = G.lastOut || null; endManche(G, w); return; }
   if (G.status === "vote" && G.votes.filter(v => v.manche === G.manche && v.cycle === G.cycle && G.alive.includes(v.uid)).length >= G.alive.length && G.alive.length) resolveVotes(G);
 }
+function simulNext(G) {
+  G.turnStart = Date.now(); G.tour++;
+  const max = G.toursNow || G.settings.tours;
+  if (G.tour > max) { G.status = "vote"; G.tour = max; G.speaker = 0; }
+}
+const simulDone = G => (G.clues || []).filter(c => c.manche === G.manche && c.cycle === G.cycle && c.tour === G.tour).map(c => c.uid);
 function advance(G) {
   G.turnStart = Date.now();
   G.speaker++;
@@ -581,13 +592,20 @@ function apply(G, actor, a) {
       if (G.deal + 1 >= G.order.length) { G.status = "clues"; G.deal = 0; } else G.deal++;
       return "";
     case "clue": {
+      if (G.special === "simul" && st === "clues") {
+        if (!G.alive.includes(actor) || simulDone(G).includes(actor)) return "";
+        const w = String(a.word ?? "").trim().slice(0, MAX_CLUE) || "—";
+        G.clues.push({ uid: actor, manche: G.manche, cycle: G.cycle, tour: G.tour, word: w });
+        if (G.alive.every(id => simulDone(G).includes(id))) simulNext(G);
+        return "";
+      }
       if (st !== "clues" || G.order[G.speaker] !== actor) return "Ce n'est pas ton tour.";
       const word = String(a.word ?? "").trim().slice(0, MAX_CLUE); if (!word) return "Écris un mot avant d'envoyer.";
       G.clues = G.clues.filter(c => !(c.manche === G.manche && c.cycle === G.cycle && c.tour === G.tour && c.uid === actor));
       G.clues.push({ uid: actor, manche: G.manche, cycle: G.cycle, tour: G.tour, word });
       advance(G); return "";
     }
-    case "skip": if (host && st === "clues") advance(G); return "";
+    case "skip": if (host && st === "clues") { if (G.special === "simul") simulNext(G); else advance(G); } return "";
     case "vote": {
       if (st !== "vote" || !G.alive.includes(actor) || !G.alive.includes(a.target) || a.target === actor) return "";
       G.votes = G.votes.filter(v => !(v.manche === G.manche && v.cycle === G.cycle && v.uid === actor));
@@ -613,7 +631,9 @@ function apply(G, actor, a) {
       Object.assign(G, { status: "clues", cycle: G.cycle + 1, tour: 1, speaker: 0, toursNow: 1, turnStart: Date.now(), lastVotes: null });
       return "";
     case "toVote": if (host && st === "clues") Object.assign(G, { status: "vote", speaker: 0 }); return "";
-    case "pass": if (st === "clues" && G.order[G.speaker] === actor) advance(G); return "";
+    case "pass":
+      if (G.special === "simul" && st === "clues") return apply(G, actor, { type: "clue", word: "—" });
+      if (st === "clues" && G.order[G.speaker] === actor) advance(G); return "";
     case "theme": if (host && THEMES[a.value]) G.settings.theme = a.value; return "";
     case "next":
       if (!host || st !== "roundEnd") return "";
@@ -638,6 +658,7 @@ function apply(G, actor, a) {
     }
     case "delPair": G.custom = (G.custom || []).filter(c => !(c.id === a.id && (c.by === actor || host) && !c.used)); return "";
     case "mime": if (host) G.settings.mime = !G.settings.mime; return "";
+    case "timer": if (host && TIMERS.some(t => t[0] === a.value)) G.settings.timer = a.value; return "";
     case "specials": if (host && FREQS.some(f => f[0] === a.value)) G.settings.specialsFreq = a.value; return "";
     case "newGame":
       if (!host) return "";
@@ -654,6 +675,10 @@ function viewFor(G, uid) {
   if (!ended && G.special && SPECIALS[G.special]?.secret) v.special = null;
   if (!ended) v.traitor = G.traitor === uid ? uid : null;
   v.traitorInfo = !ended && G.traitor === uid ? Object.keys(G.roles).filter(id => G.roles[id].role !== "civil") : null;
+  if (G.special === "simul" && G.status === "clues") {
+    v.simulDone = simulDone(G);
+    v.clues = G.clues.filter(c => !(c.manche === G.manche && c.cycle === G.cycle && c.tour === G.tour && c.uid !== uid));
+  }
   v.myCustom = (G.custom || []).filter(c => c.by === uid && !c.used);
   v.customCount = (G.custom || []).filter(c => !c.used).length;
   delete v.custom;
@@ -770,7 +795,7 @@ async function hostRoom(name, resume) {
     else if (m.t === "bye") { if (G.players[uid]) G.players[uid].online = false; }
     else if (m.t === "act" && G.players[uid]) {
       const a = m.a || {};
-      if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal", "toVote", "theme", "mime", "specials"].includes(a.type)) return;
+      if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal", "toVote", "theme", "mime", "specials", "timer"].includes(a.type)) return;
       const e = apply(G, uid, a);
       if (e) pub(topic("p", uid), { t: "err", m: e }, false);
       if (a.type === "leave") { lastSent.delete(uid); pub(topic("p", uid), null, true); }
@@ -788,9 +813,9 @@ async function hostRoom(name, resume) {
   let lastTick = 0;
   const clock = setInterval(() => {
     if (S.client !== c || S.mode !== "host") { clearInterval(clock); return; }
-    if (!G || G.status !== "clues") return;
+    if (!G || G.status !== "clues" || !turnMs(G)) return;
     const left = turnMs(G) - (Date.now() - (G.turnStart || Date.now()));
-    if (left < -1500) { advance(G); persist(); broadcast(); refresh(); lastTick = 0; }
+    if (left < -1500) { if (G.special === "simul") simulNext(G); else advance(G); persist(); broadcast(); refresh(); lastTick = 0; }
     if (Date.now() - lastTick > 2000 && c.connected) {
       lastTick = Date.now();
       c.publish(topic("tick"), JSON.stringify({ key: turnKey(G), left: Math.max(0, turnMs(G) - (Date.now() - G.turnStart)) }), { qos: 0 });
@@ -961,6 +986,11 @@ function settingsPanel() {
       }).join("")}</div>
       <span class="small muted">${{ off: "Aucune manche spéciale.", rare: "Environ une manche sur six.", normal: "Environ une manche sur quatre.", often: "Environ une manche sur deux.", always: "Chaque manche est spéciale." }[freqOf(S.room.settings)[0]]}
         Au programme : Fantôme surprise, Pas de Taupe, Traître${isLocal() ? "" : ", Chrono express"}, Points doublés.</span></div>
+    ${isLocal() ? "" : `<div class="stack"><span class="label">Chrono par indice</span>
+      <div class="freqs" role="radiogroup" aria-label="Chrono par indice">${TIMERS.map(([v, label]) => {
+        const on = (S.room.settings.timer ?? 30) === v;
+        return `<button class="freq ${on ? "on" : ""}" role="radio" aria-checked="${on}" data-a="timer" data-v="${v}" ${h ? "" : "disabled"}>${label}</button>`;
+      }).join("")}</div></div>`}
     ${isLocal() ? `<button class="toggle ${S.room.settings.mime ? "on" : ""}" data-a="mime" role="switch" aria-checked="${!!S.room.settings.mime}">
       <span><b>Mister Mime</b><span>À chaque manche, un joueur tiré au sort doit mimer ses indices, sans parler.</span></span><i></i></button>` : ""}
     <div class="settings">
@@ -974,16 +1004,17 @@ function settingsPanel() {
       ${prob ? `<p class="small muted">${esc(prob)}</p>` : ""}` : `<p class="small muted">En attente du lancement par l'hôte…</p>`}
     ${errLine()}</div>`;
 }
+const kickBtn = uid => `<button class="ghost x ${S.confirmKick === uid ? "danger-soft" : ""}" data-a="kick" data-u="${esc(uid)}">${S.confirmKick === uid ? (isLocal() ? "Confirmer ?" : "Exclure ?") : (isLocal() ? "Retirer" : "Exclure")}</button>`;
 function viewEdit() {
   const r = S.room, ps = players();
   const playing = id => (r.inRound || []).includes(id), out = id => playing(id) && !r.alive.includes(id);
   return `${bar()}
   <div class="panel"><div class="status"><h2>Joueurs</h2><span class="label"><b>${ps.length}</b> ${isLocal() ? "autour de la table" : "dans le salon"}</span></div>
     ${isLocal() ? `<div class="row"><input type="text" id="newPlayer" class="grow" maxlength="20" placeholder="Prénom du joueur à ajouter" data-enter="addPlayer" autocomplete="off">
-      <button data-a="addPlayer">Ajouter</button></div>` : `<p class="small muted">Pour ajouter quelqu'un, envoie-lui le lien du salon : il rejoint et joue dès la manche suivante.</p>`}
+      <button data-a="addPlayer">Ajouter</button></div>` : `<p class="small muted">Pour ajouter quelqu'un, envoie-lui le lien du salon : il rejoint et joue dès la manche suivante. « Exclure » renvoie un joueur hors du salon.</p>`}
     <ul class="players">${ps.map(p => `<li><span class="dot ${p.online === false ? "off" : ""}"></span><span class="name">${esc(p.name)}${you(p.uid)}</span>
       <span class="tag">${!playing(p.uid) ? "Manche suivante" : out(p.uid) ? "Éliminé·e" : "En jeu"}</span>
-      ${p.uid !== S.uid && !(S.mode === "host" && p.uid === r.host) ? `<button class="ghost x" data-a="kick" data-u="${esc(p.uid)}">Retirer</button>` : ""}</li>`).join("")}</ul>
+      ${p.uid !== S.uid && !(S.mode === "host" && p.uid === r.host) ? `${kickBtn(p.uid)}` : ""}</li>`).join("")}</ul>
     <p class="small muted">Un joueur ajouté entre dans la partie à la manche suivante. Un joueur retiré quitte tout de suite la manche en cours.</p></div>
   ${settingsPanel()}
   <p class="small muted">Les réglages s'appliquent à partir de la manche suivante, sans perdre les scores.</p>
@@ -996,7 +1027,7 @@ function viewLobby() {
     <div class="row"><input type="text" id="newPlayer" class="grow" maxlength="20" placeholder="Prénom du joueur" data-enter="addPlayer" autocomplete="off">
       <button data-a="addPlayer">Ajouter</button></div>
     ${ps.length ? `<ul class="players">${ps.map(p => `<li><span class="dot"></span><span class="name">${esc(p.name)}</span>
-      <button class="ghost x" data-a="kick" data-u="${esc(p.uid)}">Retirer</button></li>`).join("")}</ul>`
+      ${kickBtn(p.uid)}</li>`).join("")}</ul>`
       : `<p class="small muted">Ajoute au moins 3 joueurs. L'ordre de parole sera tiré au hasard.</p>`}</div>
   ${settingsPanel()}`;
   const canShare = !!navigator.share;
@@ -1013,7 +1044,7 @@ function viewLobby() {
     <ul class="players">${ps.map(p => `<li><span class="dot ${p.online === false ? "off" : ""}" title="${p.online === false ? "Déconnecté" : "En ligne"}"></span>
       <span class="name">${esc(p.name)}${you(p.uid)}</span>
       ${p.uid === S.room.host ? `<span class="tag host">Hôte</span>` : ""}
-      ${isHost() && p.uid !== S.uid ? `<button class="ghost x" data-a="kick" data-u="${esc(p.uid)}">Retirer</button>` : ""}</li>`).join("")}</ul></div>
+      ${isHost() && p.uid !== S.uid ? `${kickBtn(p.uid)}` : ""}</li>`).join("")}</ul></div>
   ${customPanel()}
   ${settingsPanel()}`;
 }
@@ -1086,14 +1117,17 @@ const wordsPanel = () => isLocal() ? "" : `<div class="panel"><h3>Les mots donn�
 function board() {
   const r = S.room;
   const seq = r.order.concat((r.inRound || []).filter(id => !r.order.includes(id)));
-  const speaking = r.status === "clues" ? currentSpeaker() : null;
+  const simul = r.special === "simul" && r.status === "clues";
+  const speaking = r.status === "clues" && !simul ? currentSpeaker() : null;
   const mc = r.clues.filter(c => c.manche === r.manche).sort((a, b) => a.cycle - b.cycle || a.tour - b.tour);
   return `<ul class="board">${seq.map(id => {
     const out = !r.alive.includes(id), cs = mc.filter(c => c.uid === id), role = r.roles?.[id]?.role;
     return `<li class="${id === speaking ? "turn" : ""} ${out ? "out" : ""}"><span class="who">${esc(nameOf(id))}${you(id)}
       ${out && role ? ` <span class="tag ${role}">${ROLE_LABEL[role]}</span>` : ""}</span>
       <span class="clues">${cs.map(c => `<span class="clue ${c.cycle === r.cycle ? "now" : ""}">${esc(c.word)}</span>`).join("")}
-      ${id === speaking ? `<span class="pending">écrit…</span>` : ""}${!cs.length && id !== speaking ? `<span class="pending">—</span>` : ""}</span></li>`;
+      ${id === speaking ? `<span class="pending">écrit…</span>` : ""}
+      ${simul && !out ? `<span class="pending">${(r.simulDone || []).includes(id) ? "✓ prêt" : "écrit…"}</span>` : ""}
+      ${!cs.length && id !== speaking && !(simul && !out) ? `<span class="pending">—</span>` : ""}</span></li>`;
   }).join("")}</ul>`;
 }
 function viewDeal() {
@@ -1110,6 +1144,21 @@ function viewDeal() {
 }
 function viewClues() {
   const r = S.room, sp = currentSpeaker(), mine = sp === S.uid;
+  if (!isLocal() && r.special === "simul") {
+    const can = r.alive.includes(S.uid) && !(r.simulDone || []).includes(S.uid), done = (r.simulDone || []).length;
+    return `${bar()}${statusLine()}${mySlip()}
+  <div class="panel"><div class="status"><h2>${can ? "Écris ton indice" : "En attente des autres"}</h2><span class="timer" id="turnTimer" aria-live="off"></span></div>
+    <div class="timebar"><i id="turnBar"></i></div>
+    <p class="small muted">Tout le monde écrit en même temps. Les indices apparaissent d'un coup quand tout le monde est prêt (${done} / ${r.alive.length}).</p>
+    ${can ? `<div class="row"><input type="text" id="clueInput" class="grow" maxlength="20" placeholder="Ton indice (20 caractères max)" data-enter="clue" autocomplete="off">
+      <button class="primary" data-a="clue">Envoyer</button></div>
+      <div class="row"><button class="ghost grow" data-a="pass">Passer mon tour</button></div>` : ""}
+    ${board()}
+    ${isHost() ? `<div class="row"><button class="ghost grow" data-a="skip">Révéler sans attendre</button>
+      <button class="ghost grow" data-a="toVote">Aller directement au vote</button></div>` : ""}
+    ${errLine()}</div>
+  ${chatPanel()}`;
+  }
   if (isLocal()) return `${bar()}${statusLine()}
   <div class="panel"><h2>Indices à l'oral</h2>
     <p class="small muted">Chacun dit un mot en rapport avec le sien, dans cet ordre${(r.toursNow || r.settings.tours) > 1 ? `, ${r.toursNow || r.settings.tours} tours de suite` : ""}. Puis passez au vote.</p>
@@ -1288,7 +1337,12 @@ const ACTIONS = {
   local: () => { closeNet(); S.mode = "local"; S.err = ""; S.code = null; G = freshRoom(null, LOCAL_HOST); persist(); refresh(); },
   resumeLocal: () => { closeNet(); S.mode = "local"; S.err = ""; G = S.savedLocal; persist(); refresh(); },
   addPlayer: () => { const n = takeInput("newPlayer"); if (n) send({ type: "addLocal", name: n }); document.getElementById("newPlayer")?.focus(); },
-  kick: el => isLocal() ? send({ type: "kick", uid: el.dataset.u }) : kick(el.dataset.u),
+  kick: el => {
+    const uid = el.dataset.u;
+    if (S.confirmKick !== uid) { S.confirmKick = uid; render(); setTimeout(() => { if (S.confirmKick === uid) { S.confirmKick = null; render(); } }, 4000); return; }
+    S.confirmKick = null;
+    isLocal() ? send({ type: "kick", uid }) : kick(uid);
+  },
   set: el => send({ type: "set", key: el.dataset.k, delta: +el.dataset.d }),
   start: () => send({ type: "start" }),
   dealReady: () => { S.dealReady = true; render(); },
@@ -1309,6 +1363,7 @@ const ACTIONS = {
   delPair: el => send({ type: "delPair", id: el.dataset.id }),
   mime: () => send({ type: "mime" }),
   specials: el => send({ type: "specials", value: el.dataset.v }),
+  timer: el => send({ type: "timer", value: +el.dataset.v }),
   editOpen: () => { S.editing = true; S.err = ""; render(); },
   editClose: () => { S.editing = false; S.err = ""; render(); },
   peekStart: () => { S.peek = { step: "pick" }; render(); },
@@ -1334,7 +1389,8 @@ setInterval(() => {
   const el = document.getElementById("turnTimer"), bar = document.getElementById("turnBar");
   if (!el) return;
   const left = turnLeft();
-  if (left == null) { el.textContent = ""; if (bar) bar.style.width = "100%"; return; }
+  if (bar) bar.parentElement.hidden = left == null;
+  if (left == null) { el.textContent = ""; return; }
   const sec = Math.max(0, Math.ceil(left / 1000));
   el.textContent = sec + " s"; el.classList.toggle("low", sec <= 10);
   if (bar) { bar.style.width = Math.max(0, Math.min(100, left / turnMs(S.room) * 100)) + "%"; bar.classList.toggle("low", sec <= 10); }
