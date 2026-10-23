@@ -171,6 +171,17 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 .netbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: rgba(255,77,141,.1); border: 1px solid rgba(255,77,141,.45); border-radius: 10px; padding: 8px 10px 8px 14px; font-size: .9rem; }
 .netbar button { padding: 7px 12px; font-size: .85rem; }
+.themes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 420px) { .themes { grid-template-columns: 1fr; } }
+.theme { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 11px 13px; background: var(--bg); font-weight: 400; }
+.theme b { font-family: var(--f-display); font-size: .95rem; }
+.theme span { font-size: .78rem; color: var(--muted); }
+.theme.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
+.theme.on b { color: var(--accent); }
+.theme:disabled { opacity: 1; cursor: default; }
+.theme:disabled:not(.on) { opacity: .5; }
+.order { margin: 0; padding-left: 1.6em; display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: 1.05rem; }
+.order li::marker { color: var(--accent); font-family: var(--f-mono); }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -181,7 +192,8 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script>
 // [mot des civils, mot de la taupe, indice large pour le fantôme]
-const PAIRS = [
+const THEMES = {
+  classique: { label: "Classique", desc: "Mots du quotidien", pairs: [
   ["Chat","Chien","animal"],["Café","Thé","boisson"],["Plage","Piscine","loisir"],["Pizza","Burger","nourriture"],
   ["Guitare","Violon","musique"],["Avion","Hélicoptère","transport"],["Soleil","Lune","ciel"],["Instagram","TikTok","internet"],
   ["Netflix","YouTube","écran"],["Banane","Mangue","fruit"],["Ski","Snowboard","sport"],["Football","Rugby","sport"],
@@ -202,10 +214,36 @@ const PAIRS = [
   ["Licorne","Pégase","créature"],["Hiver","Automne","saison"],["Matin","Soir","moment"],["Bougie","Lampe","lumière"],
   ["Parapluie","Imperméable","pluie"],["Écharpe","Bonnet","hiver"],["Baskets","Bottes","chaussures"],["Coiffeur","Barbier","métier"],
   ["Astronaute","Pilote","métier"],["Fusée","Satellite","espace"],["Étoile","Planète","espace"],["Popcorn","Chips","apéro"]
-];
+] },
+  border: { label: "Border", desc: "Soirées, couple, limite", pairs: [
+    ["Tinder","Bumble","appli"],["Ex","Crush","cœur"],["Vodka","Tequila","alcool"],["Gueule de bois","Mal de crâne","lendemain"],
+    ["Strip-tease","Pole dance","danse"],["Préservatif","Pilule","précaution"],["Menottes","Bandeau","accessoire"],["Bisou","Suçon","peau"],
+    ["Ghoster","Bloquer","téléphone"],["Coup d'un soir","Sex friend","relation"],["Nudes","Sexto","téléphone"],["String","Culotte","sous-vêtement"],
+    ["Boîte de nuit","Bar","soirée"],["Joint","Chicha","fumée"],["Pet","Rot","bruit"],["Prison","Garde à vue","police"],
+    ["Belle-mère","Belle-sœur","famille"],["Divorce","Rupture","couple"],["Cocu","Infidèle","couple"],["Doigt d'honneur","Insulte","geste"],
+    ["Strip poker","Action ou vérité","jeu"],["Sauna","Jacuzzi","chaleur"],["Lap dance","Twerk","danse"],["Épilation","Rasage","poils"],
+    ["Bourré","Pompette","alcool"],["Fesses","Poitrine","corps"],["Drague","Flirt","séduction"],["Speed dating","Rendez-vous à l'aveugle","rencontre"],
+    ["Lingerie","Nuisette","tenue"],["Jaloux","Possessif","défaut"],["Mytho","Hypocrite","défaut"],["Plan à trois","Partouze","nuit"],
+    ["Love hotel","Motel","chambre"],["Shot","Cocktail","verre"],["After","Before","soirée"],["Fessée","Chatouilles","jeu"],
+    ["Gynécologue","Urologue","médecin"],["Test de grossesse","Pilule du lendemain","pharmacie"],["Body shot","Beer pong","soirée"],["Snapchat","OnlyFans","réseau"]
+  ] },
+  netflix: { label: "Netflix", desc: "Manga, Disney, séries, films", pairs: [
+    ["Naruto","Sasuke","manga"],["Goku","Vegeta","manga"],["Luffy","Zoro","manga"],["Tanjiro","Nezuko","manga"],
+    ["Eren","Livaï","manga"],["Light Yagami","L","manga"],["One Piece","Naruto","anime"],["Pikachu","Évoli","Pokémon"],
+    ["Totoro","Chihiro","Ghibli"],["Elsa","Raiponce","Disney"],["Simba","Nala","Disney"],["Mickey","Donald","Disney"],
+    ["Ariel","Vaiana","Disney"],["Stitch","Olaf","Disney"],["Le Roi Lion","Le Livre de la jungle","Disney"],["Woody","Buzz l'Éclair","Pixar"],
+    ["Shrek","Fiona","film d'animation"],["Gru","Minion","film d'animation"],["Harry Potter","Ron Weasley","sorcier"],["Dark Vador","Kylo Ren","Star Wars"],
+    ["Iron Man","Captain America","Marvel"],["Thor","Loki","Marvel"],["Spider-Man","Deadpool","super-héros"],["Batman","Superman","super-héros"],
+    ["Joker","Harley Quinn","méchant"],["Jack Sparrow","Barbe Noire","pirate"],["Gollum","Dobby","créature"],["Titanic","Avatar","film"],
+    ["Stranger Things","Dark","série"],["La Casa de Papel","Lupin","série"],["Squid Game","Alice in Borderland","série"],["Mercredi","Morticia","famille Addams"],
+    ["Le Professeur","Berlin","braquage"],["Walter White","Jesse Pinkman","série"],["Friends","How I Met Your Mother","sitcom"],["Bob l'éponge","Patrick","dessin animé"],
+    ["Homer Simpson","Peter Griffin","dessin animé"],["Peaky Blinders","The Crown","série"],["Bridgerton","Emily in Paris","série"],["Eleven","Max","Stranger Things"]
+  ] }
+};
+
 const ROLE_LABEL = { civil: "Civil", uc: "Taupe", ghost: "Fantôme" };
 const POINTS = { civil: 2, uc: 10, ghost: 6 };
-const DEFAULT_SETTINGS = { uc: 1, ghost: 0, manches: 3, tours: 2 };
+const DEFAULT_SETTINGS = { uc: 1, ghost: 0, manches: 3, tours: 2, theme: "classique" };
 const NS = "taupe-fabgeo-v1/";
 const BROKERS = window.TAUPE_BROKERS || ["wss://broker.emqx.io:8084/mqtt", "wss://broker.hivemq.com:8884/mqtt", "wss://test.mosquitto.org:8081/mqtt"];
 const LOCAL_HOST = "host";
@@ -236,11 +274,13 @@ function startProblem(G) {
 }
 function startManche(G, local) {
   const s = G.settings, ids = shuffle(listPlayers(G).map(p => p.uid));
-  if ((G.usedPairs || []).length >= PAIRS.length) G.usedPairs = [];
-  const free = PAIRS.map((_, i) => i).filter(i => !G.usedPairs.includes(i));
+  const th = THEMES[s.theme] ? s.theme : "classique", pairs = THEMES[th].pairs;
+  G.usedPairs = (G.usedPairs || []).filter(k => typeof k === "string");
+  let free = pairs.map((_, i) => i).filter(i => !G.usedPairs.includes(th + ":" + i));
+  if (!free.length) { G.usedPairs = G.usedPairs.filter(k => !k.startsWith(th + ":")); free = pairs.map((_, i) => i); }
   const pi = free[Math.floor(Math.random() * free.length)];
-  G.usedPairs.push(pi);
-  let [a, b, hint] = PAIRS[pi];
+  G.usedPairs.push(th + ":" + pi);
+  let [a, b, hint] = pairs[pi];
   if (Math.random() < .5) [a, b] = [b, a];
   const roles = {};
   ids.forEach((id, i) => { roles[id] = { role: i < s.uc ? "uc" : i < s.uc + s.ghost ? "ghost" : "civil" }; });
@@ -248,13 +288,14 @@ function startManche(G, local) {
   const firstOk = order.findIndex(id => roles[id].role !== "ghost");
   order = order.slice(firstOk).concat(order.slice(0, firstOk));
   ids.forEach(id => { if (G.scores[id] == null) G.scores[id] = 0; });
-  Object.assign(G, { status: local ? "deal" : "clues", deal: 0, manche: G.manche + 1, cycle: 1, tour: 1, speaker: 0,
+  Object.assign(G, { status: local ? "deal" : "clues", deal: 0, manche: G.manche + 1, cycle: 1, tour: 1, speaker: 0, toursNow: s.tours,
     order, alive: order.slice(), inRound: ids, roles, words: { civil: a, uc: b, hint }, lastOut: null, winner: null });
 }
 function advance(G) {
   G.speaker++;
   if (G.speaker >= G.order.length) { G.speaker = 0; G.tour++; }
-  if (G.tour > G.settings.tours) { G.status = "vote"; G.tour = G.settings.tours; G.speaker = 0; }
+  const max = G.toursNow || G.settings.tours;
+  if (G.tour > max) { G.status = "vote"; G.tour = max; G.speaker = 0; }
 }
 function winnerFor(G) {
   const imp = G.alive.filter(id => G.roles[id]?.role !== "civil").length, civ = G.alive.length - imp;
@@ -351,7 +392,10 @@ function apply(G, actor, a) {
       if (w) endManche(G, w); else G.status = "result";
       return "";
     }
-    case "continue": if (host && st === "result") Object.assign(G, { status: "clues", cycle: G.cycle + 1, tour: 1, speaker: 0 }); return "";
+    case "continue": if (host && st === "result") Object.assign(G, { status: "clues", cycle: G.cycle + 1, tour: 1, speaker: 0, toursNow: 1 }); return "";
+    case "toVote": if (host && st === "clues") Object.assign(G, { status: "vote", speaker: 0 }); return "";
+    case "pass": if (st === "clues" && G.order[G.speaker] === actor) advance(G); return "";
+    case "theme": if (host && st === "lobby" && THEMES[a.value]) G.settings.theme = a.value; return "";
     case "next":
       if (!host || st !== "roundEnd") return "";
       if (G.manche >= G.settings.manches) G.status = "final"; else startManche(G, !!a.local);
@@ -479,7 +523,7 @@ async function hostRoom(name, resume) {
     else if (m.t === "bye") { if (G.players[uid]) G.players[uid].online = false; }
     else if (m.t === "act" && G.players[uid]) {
       const a = m.a || {};
-      if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal"].includes(a.type)) return;
+      if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal", "toVote", "theme"].includes(a.type)) return;
       const e = apply(G, uid, a);
       if (e) pub(topic("p", uid), { t: "err", m: e }, false);
       if (a.type === "leave") { lastSent.delete(uid); pub(topic("p", uid), null, true); }
@@ -612,12 +656,17 @@ function stepper(key, label, hint) {
 }
 function settingsPanel() {
   const h = isHost(), prob = startProblem(S.room);
+  const cur = S.room.settings.theme || "classique";
   return `<div class="panel"><div class="status"><h2>Réglages</h2>${h ? "" : `<span class="small muted">Seul l'hôte peut modifier</span>`}</div>
+    <div class="stack"><span class="label">Thème des mots</span>
+      <div class="themes" role="radiogroup" aria-label="Thème des mots">${Object.entries(THEMES).map(([k, t]) =>
+        `<button class="theme ${k === cur ? "on" : ""}" role="radio" aria-checked="${k === cur}" data-a="theme" data-v="${k}" ${h ? "" : "disabled"}>
+          <b>${t.label}</b><span>${t.desc}</span></button>`).join("")}</div></div>
     <div class="settings">
       ${stepper("uc", "Taupes", "Mot proche mais différent")}
       ${stepper("ghost", "Fantômes", "Aucun mot, un indice large")}
       ${stepper("manches", "Manches", "Nombre de parties jouées")}
-      ${stepper("tours", "Tours de parole", "Mots écrits avant chaque vote")}
+      ${stepper("tours", "Tours de parole", isLocal() ? "Indices à l'oral avant le 1er vote" : "Avant le 1er vote, puis 1 après")}
     </div>
     ${h ? `<button class="primary" data-a="start" ${prob ? "disabled" : ""}>Lancer la partie</button>
       ${prob ? `<p class="small muted">${esc(prob)}</p>` : ""}` : `<p class="small muted">En attente du lancement par l'hôte…</p>`}
@@ -664,9 +713,10 @@ const mySlip = () => isLocal() ? "" : slip(S.uid, S.code + S.room.manche);
 function statusLine() {
   const r = S.room;
   return `<div class="status"><span class="label">Manche <b>${r.manche}</b> / ${r.settings.manches}</span>
-    <span class="label">Vote <b>${r.cycle}</b>${r.status === "clues" ? ` · Tour <b>${r.tour}</b> / ${r.settings.tours}` : ""}</span></div>`;
+    <span class="label">Vote <b>${r.cycle}</b>${r.status === "clues" ? ` · Tour <b>${r.tour}</b> / ${r.toursNow || r.settings.tours}` : ""}</span></div>`;
 }
 const currentSpeaker = () => S.room.order[S.room.speaker];
+const wordsPanel = () => isLocal() ? "" : `<div class="panel"><h3>Les mots donnés</h3>${board()}</div>`;
 function board() {
   const r = S.room;
   const seq = r.order.concat((r.inRound || []).filter(id => !r.order.includes(id)));
@@ -693,15 +743,21 @@ function viewDeal() {
     <button class="primary" data-a="dealNext">${last ? "J'ai vu, on commence" : "J'ai vu, joueur suivant"}</button></div>`;
 }
 function viewClues() {
-  const r = S.room, sp = currentSpeaker(), mine = isLocal() || sp === S.uid;
+  const r = S.room, sp = currentSpeaker(), mine = sp === S.uid;
+  if (isLocal()) return `${bar()}${statusLine()}
+  <div class="panel"><h2>Indices à l'oral</h2>
+    <p class="small muted">Chacun dit un mot en rapport avec le sien, dans cet ordre${(r.toursNow || r.settings.tours) > 1 ? `, ${r.toursNow || r.settings.tours} tours de suite` : ""}. Puis passez au vote.</p>
+    <ol class="order">${r.order.map(id => `<li>${esc(nameOf(id))}</li>`).join("")}</ol>
+    <button class="primary" data-a="toVote">Passer au vote</button></div>`;
   return `${bar()}${statusLine()}${mySlip()}
-  <div class="panel"><h2>${isLocal() ? `Au tour de ${esc(nameOf(sp))}` : mine ? "À toi de jouer" : `C'est au tour de ${esc(nameOf(sp))}`}</h2>
-    ${isLocal() ? slip(sp, `clue${r.manche}-${r.cycle}-${r.tour}-${sp}`) : ""}
+  <div class="panel"><h2>${mine ? "À toi de jouer" : `C'est au tour de ${esc(nameOf(sp))}`}</h2>
     ${mine ? `<div class="row"><input type="text" id="clueInput" class="grow" maxlength="40" placeholder="Ton indice en un mot" data-enter="clue" autocomplete="off">
       <button class="primary" data-a="clue">Envoyer</button></div>
+      <div class="row"><button class="ghost grow" data-a="pass">Passer mon tour</button></div>
       <p class="small muted">Ne donne pas le mot. Assez précis pour ton camp, assez vague pour piéger les autres.</p>` : ""}
     ${board()}
-    ${isHost() && !(S.mode === "host" && mine) ? `<button class="ghost" data-a="skip">Passer ${esc(nameOf(sp))}</button>` : ""}
+    ${isHost() ? `<div class="row">${mine ? "" : `<button class="ghost grow" data-a="skip">Passer ${esc(nameOf(sp))}</button>`}
+      <button class="ghost grow" data-a="toVote">Aller directement au vote</button></div>` : ""}
     ${errLine()}</div>`;
 }
 function viewVote() {
@@ -712,7 +768,7 @@ function viewVote() {
     <div class="votes">${r.alive.map(id => `<button data-a="vote" data-u="${esc(id)}" class="${S.pick === id ? "mine" : ""}"><span>${esc(nameOf(id))}</span></button>`).join("")}</div>
     <button class="danger" data-a="confirmVote" ${S.pick ? "" : "disabled"}>${S.pick ? `Éliminer ${esc(nameOf(S.pick))}` : "Choisis un joueur"}</button>
     ${errLine()}</div>
-  <div class="panel"><h3>Les mots donnés</h3>${board()}</div>`;
+  ${wordsPanel()}`;
   const vs = r.votes.filter(v => v.manche === r.manche && v.cycle === r.cycle && r.alive.includes(v.uid));
   const my = vs.find(v => v.uid === S.uid), can = r.alive.includes(S.uid), done = new Set(vs.map(v => v.uid));
   return `${bar()}${statusLine()}${mySlip()}
@@ -722,7 +778,7 @@ function viewVote() {
       <span>${esc(nameOf(id))}</span><span class="n">${done.has(id) ? "a voté" : ""}</span></button>`).join("")}</div>
     ${isHost() ? `<button class="ghost" data-a="resolve" ${vs.length ? "" : "disabled"}>Dépouiller les votes maintenant</button>` : ""}
     ${errLine()}</div>
-  <div class="panel"><h3>Les mots donnés</h3>${board()}</div>`;
+  ${wordsPanel()}`;
 }
 function outLine(lo) {
   if (!lo || lo.tie) return `<p class="big">Égalité</p><p class="muted">Personne n'est éliminé. On repart pour un tour.</p>`;
@@ -734,7 +790,7 @@ function viewResult() {
   return `${bar()}${statusLine()}${mySlip()}
   <div class="panel reveal stack">${outLine(S.room.lastOut)}</div>
   ${isHost() ? `<button class="primary" data-a="continue">Tour de parole suivant</button>` : `<p class="small muted">L'hôte relance la suite…</p>`}
-  <div class="panel"><h3>Les mots donnés</h3>${board()}</div>`;
+  ${wordsPanel()}`;
 }
 function viewGhostGuess() {
   const r = S.room, mine = isLocal() || r.lastOut.uid === S.uid;
@@ -746,7 +802,7 @@ function viewGhostGuess() {
       <button class="primary" data-a="guess">Valider</button></div>`
       : `<p class="muted">Le Fantôme tente de deviner le mot des civils…</p>`}
     ${errLine()}</div>
-  <div class="panel"><h3>Les mots donnés</h3>${board()}</div>`;
+  ${wordsPanel()}`;
 }
 function scoreList() {
   const sc = S.room.scores || {}, ids = Object.keys(sc).sort((a, b) => (sc[b] || 0) - (sc[a] || 0));
@@ -765,7 +821,7 @@ function viewRoundEnd() {
     <ul class="players">${Object.entries(r.roles).map(([id, { role }]) => `<li><span class="name">${esc(nameOf(id))}${you(id)}</span><span class="tag ${role}">${ROLE_LABEL[role]}</span></li>`).join("")}</ul></div>
   <div class="panel"><h3>Scores</h3>${scoreList()}</div>
   ${isHost() ? `<button class="primary" data-a="next">${last ? "Voir le classement final" : "Manche suivante"}</button>` : `<p class="small muted">L'hôte lance la suite…</p>`}
-  <div class="panel"><h3>Les mots donnés</h3>${board()}</div>`;
+  ${wordsPanel()}`;
 }
 function viewFinal() {
   const sc = S.room.scores || {}, ids = Object.keys(sc).sort((a, b) => (sc[b] || 0) - (sc[a] || 0));
@@ -830,6 +886,9 @@ const ACTIONS = {
   reveal: () => { S.revealed = !S.revealed; render(); },
   clue: () => { const w = (document.getElementById("clueInput")?.value || "").trim(); if (!w) { S.err = "Écris un mot avant d'envoyer."; render(); return; } takeInput("clueInput"); send({ type: "clue", word: w }); },
   skip: () => send({ type: "skip" }),
+  pass: () => send({ type: "pass" }),
+  toVote: () => send({ type: "toVote" }),
+  theme: el => send({ type: "theme", value: el.dataset.v }),
   vote: el => { if (isLocal()) { S.pick = S.pick === el.dataset.u ? null : el.dataset.u; render(); } else send({ type: "vote", target: el.dataset.u }); },
   confirmVote: () => { const t = S.pick; S.pick = null; if (t) send({ type: "eliminate", target: t }); },
   resolve: () => send({ type: "resolve" }),
