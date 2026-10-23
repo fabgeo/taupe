@@ -178,7 +178,7 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 </head>
 <body>
 <div id="app"><p class="muted">Chargement…</p></div>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script>
 // [mot des civils, mot de la taupe, indice large pour le fantôme]
 const PAIRS = [
@@ -206,8 +206,8 @@ const PAIRS = [
 const ROLE_LABEL = { civil: "Civil", uc: "Taupe", ghost: "Fantôme" };
 const POINTS = { civil: 2, uc: 10, ghost: 6 };
 const DEFAULT_SETTINGS = { uc: 1, ghost: 0, manches: 3, tours: 2 };
-const PEER_PREFIX = "taupe-fabgeo-";
-const PEER_OPTS = window.PEER_OPTS || { debug: 0 };
+const NS = "taupe-fabgeo-v1/";
+const BROKERS = window.TAUPE_BROKERS || ["wss://broker.emqx.io:8084/mqtt", "wss://broker.hivemq.com:8884/mqtt", "wss://test.mosquitto.org:8081/mqtt"];
 const LOCAL_HOST = "host";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -378,11 +378,10 @@ function viewFor(G, uid) {
 
 /* ================= Client state ================= */
 const S = { mode: null, uid: lsGet("uc_uid") || rid(), pseudo: lsGet("uc_pseudo"), code: null, room: null,
-  net: "idle", peer: null, conn: null, revealed: false, revealKey: "", dealReady: false, pick: null, err: "", copied: false,
+  net: "idle", client: null, broker: 0, brokerHint: null, revealed: false, revealKey: "", dealReady: false, pick: null, err: "", copied: false,
   prefill: "", savedLocal: null, savedHost: null };
 lsSet("uc_uid", S.uid);
 let G = null;
-const conns = new Map();
 const app = document.getElementById("app");
 
 const players = () => S.room ? Object.values(S.room.players).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0)) : [];
@@ -391,7 +390,7 @@ const isLocal = () => S.mode === "local";
 const isHost = () => isLocal() || S.mode === "host";
 const me = () => isLocal() ? null : S.uid;
 const you = id => !isLocal() && id === S.uid ? " (toi)" : "";
-const inviteLink = () => location.origin + location.pathname + "?room=" + S.code;
+const inviteLink = () => location.origin + location.pathname + "?room=" + S.code + (S.broker ? "&b=" + S.broker : "");
 const inviteText = () => `Rejoins ma partie de Taupe ! Salon ${S.code} : ${inviteLink()}`;
 
 function refresh() {
@@ -403,14 +402,11 @@ function persist() {
   if (isLocal()) lsSet("uc_local", JSON.stringify(G));
   if (S.mode === "host") lsSet("uc_hostgame", JSON.stringify({ at: Date.now(), G }));
 }
-function broadcast() {
-  for (const [uid, c] of conns) if (c.open) { try { c.send({ t: "state", s: viewFor(G, uid) }); } catch {} }
-}
 // Every button goes through here. Host and local apply directly; guests ask the host.
 function send(a) {
   S.err = "";
   if (S.mode === "guest") {
-    if (S.conn && S.conn.open) S.conn.send({ t: "act", a });
+    if (S.client && S.client.connected) pub(topic("act"), { t: "act", uid: S.uid, a }, false);
     else { S.err = "Pas connecté au salon. Touche « Se reconnecter »."; render(); }
     return;
   }
@@ -422,115 +418,145 @@ function send(a) {
   persist(); broadcast(); refresh();
 }
 
-/* ================= Networking (PeerJS: the host's device is the server) ================= */
 let wakeLock = null;
 async function keepAwake() { try { if (navigator.wakeLock && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { wakeLock = null; }); } } catch {} }
 
-function hostRoom(name, resume) {
-  if (!window.Peer) { S.err = "Le module de connexion n'a pas chargé. Vérifie ta connexion internet."; render(); return; }
+/* ================= Networking =================
+   The host's device runs the game. Messages travel through a free public MQTT relay
+   (no account, works behind home routers):
+     <ns>/<code>/host      retained: the host is online (cleared when it leaves or drops)
+     <ns>/<code>/act       players -> host: hello, actions, bye
+     <ns>/<code>/p/<uid>   host -> one player: their own view (retained, so reconnects are instant) */
+function topic(...p) { return NS + S.code + "/" + p.join("/"); }
+function pub(t, obj, retain) { if (S.client && S.client.connected) S.client.publish(t, obj == null ? "" : JSON.stringify(obj), { qos: 1, retain: !!retain }); }
+function parse(buf) { try { const s = buf.toString(); return s ? JSON.parse(s) : null; } catch { return null; } }
+function connectTo(i, will) {
+  return new Promise(resolve => {
+    const c = mqtt.connect(BROKERS[i], { clientId: "tp_" + rid(), clean: true, connectTimeout: 7000, reconnectPeriod: 2500, keepalive: 20, will });
+    let done = false;
+    const fail = () => { if (done) return; done = true; try { c.end(true); } catch {} resolve(null); };
+    const t = setTimeout(fail, 8000);
+    c.once("connect", () => { if (done) return; done = true; clearTimeout(t); resolve(c); });
+    c.once("error", fail);
+  });
+}
+const lastSent = new Map();
+function broadcast() {
+  if (S.mode !== "host" || !G) return;
+  for (const uid of Object.keys(G.players)) {
+    if (uid === G.host) continue;
+    const msg = JSON.stringify({ t: "state", s: viewFor(G, uid) });
+    if (lastSent.get(uid) === msg) continue;
+    lastSent.set(uid, msg);
+    if (S.client?.connected) S.client.publish(topic("p", uid), msg, { qos: 1, retain: true });
+  }
+}
+function wire(c, onMsg) {
+  S.client = c;
+  c.on("message", (t, buf) => { if (S.client === c) onMsg(t, parse(buf)); });
+  c.on("offline", () => { if (S.client === c && S.mode) { S.net = "reconnecting"; render(); } });
+}
+async function hostRoom(name, resume) {
+  if (!window.mqtt) { S.err = "Le module de connexion n'a pas chargé. Vérifie ta connexion internet."; render(); return; }
   closeNet();
   S.mode = "host"; S.net = "connecting"; S.err = "";
-  const code = resume ? resume.code : randomCode();
-  S.code = code; render();
-  const peer = new Peer(PEER_PREFIX + code, PEER_OPTS); S.peer = peer;
-  peer.on("open", () => {
-    G = resume ? resume : freshRoom(code, S.uid);
-    G.host = S.uid;
-    Object.values(G.players).forEach(p => { if (p.uid !== S.uid) p.online = false; });
-    apply(G, S.uid, { type: "join", name });
-    S.net = "ok"; keepAwake(); persist(); refresh();
+  S.code = resume ? resume.code : randomCode(); render();
+  let c = null, bi = 0;
+  for (; bi < BROKERS.length && !c; bi++) c = await connectTo(bi, { topic: NS + S.code + "/host", payload: "", retain: true, qos: 1 });
+  if (S.mode !== "host") { try { c && c.end(true); } catch {} return; }
+  if (!c) { S.mode = null; S.net = "idle"; S.err = "Impossible de joindre le serveur de jeu. Vérifie ta connexion internet."; render(); return; }
+  S.broker = bi - 1;
+  G = resume ? resume : freshRoom(S.code, S.uid);
+  G.host = S.uid;
+  Object.values(G.players).forEach(p => { if (p.uid !== S.uid) p.online = false; });
+  apply(G, S.uid, { type: "join", name });
+  lastSent.clear();
+  wire(c, (t, m) => {
+    if (!m || !G || t !== topic("act")) return;
+    const uid = String(m.uid || "").slice(0, 40);
+    if (!uid || uid === G.host) return;
+    if (m.t === "hello") apply(G, uid, { type: "join", name: m.name });
+    else if (m.t === "bye") { if (G.players[uid]) G.players[uid].online = false; }
+    else if (m.t === "act" && G.players[uid]) {
+      const a = m.a || {};
+      if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal"].includes(a.type)) return;
+      const e = apply(G, uid, a);
+      if (e) pub(topic("p", uid), { t: "err", m: e }, false);
+      if (a.type === "leave") { lastSent.delete(uid); pub(topic("p", uid), null, true); }
+    } else return;
+    if (G.players[uid] && m.t !== "bye") G.players[uid].online = true;
+    if (m.t === "hello") lastSent.delete(uid);
+    persist(); broadcast(); refresh();
   });
-  peer.on("connection", conn => {
-    conn.on("data", msg => {
-      if (!msg || typeof msg !== "object" || !G) return;
-      if (msg.t === "hello") {
-        const uid = String(msg.uid || "").slice(0, 40);
-        if (!uid || uid === G.host) return;
-        const old = conns.get(uid); if (old && old !== conn) { try { old.close(); } catch {} }
-        conn.uid = uid; conns.set(uid, conn);
-        apply(G, uid, { type: "join", name: msg.name });
-      } else if (msg.t === "act" && conn.uid && G.players[conn.uid]) {
-        const a = msg.a || {};
-        if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal"].includes(a.type)) return;
-        const e = apply(G, conn.uid, a);
-        if (e) { try { conn.send({ t: "err", m: e }); } catch {} }
-        if (a.type === "leave") { conns.delete(conn.uid); setTimeout(() => { try { conn.close(); } catch {} }, 200); }
-      } else return;
-      persist(); broadcast(); refresh();
-    });
-    conn.on("close", () => {
-      if (conn.uid && conns.get(conn.uid) === conn) {
-        conns.delete(conn.uid);
-        if (G?.players[conn.uid]) G.players[conn.uid].online = false;
-        persist(); broadcast(); refresh();
-      }
-    });
-  });
-  peer.on("disconnected", () => { if (S.peer === peer && !peer.destroyed) setTimeout(() => { try { peer.reconnect(); } catch {} }, 1000); });
-  peer.on("error", e => {
-    if (S.peer !== peer) return;
-    if (e.type === "unavailable-id") {
-      if (resume) { S.net = "lost"; S.err = "Le salon met quelques secondes à se libérer. Réessaie « Reprendre mon salon » dans un instant."; closeNet(); S.mode = null; }
-      else { hostRoom(name, null); return; }
-    } else if (e.type === "peer-unavailable") return;
-    else if (!G) { S.err = "Impossible d'ouvrir le salon (" + e.type + "). Vérifie ta connexion internet."; closeNet(); S.mode = null; }
-    render();
-  });
+  const announce = () => { pub(topic("host"), { on: true, at: Date.now() }, true); lastSent.clear(); broadcast(); };
+  c.subscribe(topic("act"), { qos: 1 }, announce);
+  c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe(topic("act"), { qos: 1 }, announce); render(); } });
+  S.net = "ok"; keepAwake(); persist(); refresh();
 }
 function kick(uid) {
-  const c = conns.get(uid);
-  if (c) { try { c.send({ t: "kicked" }); } catch {} conns.delete(uid); setTimeout(() => { try { c.close(); } catch {} }, 200); }
+  pub(topic("p", uid), { t: "kicked" }, false);
+  setTimeout(() => pub(topic("p", uid), null, true), 300);
+  lastSent.delete(uid);
   send({ type: "kick", uid });
 }
-function joinRoom(code, name) {
-  if (!window.Peer) { S.err = "Le module de connexion n'a pas chargé. Vérifie ta connexion internet."; render(); return; }
+// Look for the host on each relay in turn: its retained "online" message arrives right after subscribing.
+async function joinRoom(code, name) {
+  if (!window.mqtt) { S.err = "Le module de connexion n'a pas chargé. Vérifie ta connexion internet."; render(); return; }
   closeNet();
-  S.mode = "guest"; S.code = code; S.net = "connecting"; S.err = "";
+  S.mode = "guest"; S.code = code; S.net = "connecting"; S.err = ""; S.room = null;
   lsSet("uc_guest", code); render();
-  const peer = new Peer(PEER_OPTS); S.peer = peer;
-  const timer = setTimeout(() => {
-    if (S.peer === peer && S.net === "connecting") { S.net = "lost"; S.err = `Impossible de joindre le salon ${code}. Vérifie le code, et que l'hôte a bien la page ouverte.`; render(); }
-  }, 15000);
-  peer.on("open", () => {
-    const conn = peer.connect(PEER_PREFIX + code, { reliable: true }); S.conn = conn;
-    conn.on("open", () => { clearTimeout(timer); S.net = "ok"; S.err = ""; conn.send({ t: "hello", uid: S.uid, name }); keepAwake(); render(); });
-    conn.on("data", msg => {
-      if (S.conn !== conn || !msg) return;
-      if (msg.t === "state") { S.room = msg.s; render(); }
-      else if (msg.t === "err") { S.err = msg.m; render(); }
-      else if (msg.t === "kicked") { leave(); S.err = "L'hôte t'a retiré·e du salon."; render(); }
+  const order = [S.brokerHint, ...BROKERS.keys()].filter((v, i, a) => v != null && v < BROKERS.length && a.indexOf(v) === i);
+  let found = null;
+  for (const i of order) {
+    const c = await connectTo(i, { topic: NS + code + "/act", payload: JSON.stringify({ t: "bye", uid: S.uid }), retain: false, qos: 1 });
+    if (S.mode !== "guest" || S.code !== code) { try { c && c.end(true); } catch {} return; }
+    if (!c) continue;
+    const ok = await new Promise(res => {
+      const t = setTimeout(() => res(false), 4000);
+      c.on("message", (tp, buf) => { const m = parse(buf); if (tp === NS + code + "/host" && m && m.on) { clearTimeout(t); res(true); } });
+      c.subscribe(NS + code + "/host", { qos: 1 });
     });
-    conn.on("close", () => { if (S.conn === conn && S.mode === "guest") { S.net = "lost"; S.err = "Connexion avec l'hôte perdue."; render(); } });
+    if (ok) { found = c; break; }
+    try { c.end(true); } catch {}
+  }
+  if (S.mode !== "guest" || S.code !== code) return;
+  if (!found) { S.net = "lost"; S.err = `Aucun salon ${code} ouvert. Vérifie le code, et que l'hôte a bien la page ouverte.`; render(); return; }
+  const c = found;
+  wire(c, (t, m) => {
+    if (t === topic("host")) { if (!m || !m.on) { S.net = "lost"; S.err = "L'hôte a fermé le salon ou a perdu sa connexion."; render(); } else if (S.net === "lost") { S.net = "ok"; S.err = ""; hello(); render(); } return; }
+    if (t !== topic("p", S.uid) || !m) return;
+    if (m.t === "state") { S.room = m.s; S.net = "ok"; render(); }
+    else if (m.t === "err") { S.err = m.m; render(); }
+    else if (m.t === "kicked") { leave(); S.err = "L'hôte t'a retiré·e du salon."; render(); }
   });
-  peer.on("error", e => {
-    if (S.peer !== peer) return;
-    clearTimeout(timer); S.net = "lost";
-    S.err = e.type === "peer-unavailable" ? `Aucun salon ${code} ouvert. Vérifie le code, ou l'hôte a fermé sa page.` : "Connexion impossible (" + e.type + ").";
-    render();
-  });
+  const hello = () => pub(topic("act"), { t: "hello", uid: S.uid, name }, false);
+  c.subscribe(topic("p", S.uid), { qos: 1 }, hello);
+  c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe([topic("p", S.uid), topic("host")], { qos: 1 }, hello); render(); } });
+  S.net = "ok"; keepAwake(); render();
 }
 function closeNet() {
-  for (const c of conns.values()) { try { c.close(); } catch {} }
-  conns.clear();
-  if (S.peer) { const p = S.peer; S.peer = null; try { p.destroy(); } catch {} }
-  S.conn = null;
+  const c = S.client; S.client = null;
+  if (c) { try { c.end(true); } catch {} }
 }
 function leave() {
-  if (S.mode === "guest" && S.conn?.open) { try { S.conn.send({ t: "act", a: { type: "leave" } }); } catch {} }
+  const c = S.client;
+  if (S.mode === "guest" && c?.connected) pub(topic("act"), { t: "act", uid: S.uid, a: { type: "leave" } }, false);
+  if (S.mode === "host" && c?.connected && G) {
+    pub(topic("host"), null, true);
+    Object.keys(G.players).forEach(uid => { if (uid !== G.host) pub(topic("p", uid), null, true); });
+  }
   if (S.mode === "host") lsSet("uc_hostgame", "");
   if (S.mode === "guest") lsSet("uc_guest", "");
   if (S.mode === "local") lsSet("uc_local", "");
-  const p = S.peer; S.peer = null; S.conn = null;
-  for (const c of conns.values()) { try { c.close(); } catch {} } conns.clear();
-  setTimeout(() => { try { p && p.destroy(); } catch {} }, 300);
+  S.client = null;
+  if (c) setTimeout(() => { try { c.end(); } catch {} }, 400);
   Object.assign(S, { mode: null, code: null, room: null, net: "idle", pick: null, dealReady: false });
   G = null; loadSaved(); render();
 }
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
   keepAwake();
-  if (S.mode === "guest" && S.net === "lost" && S.code) joinRoom(S.code, S.pseudo);
-  if (S.mode === "host" && S.peer && S.peer.disconnected && !S.peer.destroyed) { try { S.peer.reconnect(); } catch {} }
+  if (S.client && !S.client.connected) { try { S.client.reconnect(); } catch {} }
 });
 
 /* ================= Rendering ================= */
@@ -571,8 +597,9 @@ function viewHome() {
   </div>`;
 }
 function bar() {
-  const net = S.mode === "guest" && S.net === "lost"
-    ? `<div class="netbar"><span>Connexion perdue avec l'hôte.</span><button data-a="reconnect">Se reconnecter</button></div>` : "";
+  const net = S.mode === "guest" && S.net === "lost" && S.room
+    ? `<div class="netbar"><span>Connexion perdue avec l'hôte.</span><button data-a="reconnect">Se reconnecter</button></div>`
+    : !isLocal() && S.net === "reconnecting" ? `<div class="netbar"><span>Connexion instable, reconnexion…</span></div>` : "";
   return `<div class="bar">${isLocal() ? `<span class="label">Sur cet appareil</span>` : `<span class="label">Salon <span class="code">${esc(S.code)}</span></span>`}
     <button class="ghost" data-a="leave">Quitter</button></div>${net}`;
 }
@@ -832,6 +859,8 @@ function loadSaved() {
 loadSaved();
 const qRoom = (new URLSearchParams(location.search).get("room") || "").toUpperCase();
 S.prefill = /^[A-Z]{4}$/.test(qRoom) ? qRoom : "";
+const qB = parseInt(new URLSearchParams(location.search).get("b") || "", 10);
+S.brokerHint = Number.isInteger(qB) ? qB : null;
 render();
 </script>
 </body>
