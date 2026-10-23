@@ -188,6 +188,14 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pic.emoji { display: grid; place-items: center; font-size: 1.8rem; line-height: 1; }
 .words .pic { width: 44px; height: 44px; margin-bottom: 6px; }
 .pass .slip.withpic { text-align: left; }
+.timer { font-family: var(--f-mono); font-weight: 700; font-size: 1.1rem; color: var(--accent); font-variant-numeric: tabular-nums; }
+.timer.low { color: var(--mask); }
+.timebar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.timebar i { display: block; height: 100%; width: 100%; background: var(--accent); transition: width .25s linear; }
+.timebar i.low { background: var(--mask); }
+.credits { font-size: .75rem; color: var(--muted); text-align: center; padding-top: 8px; line-height: 1.6; }
+.credits a { color: var(--muted); }
+.src { display: block; font-size: .7rem; color: var(--muted); margin-top: 2px; }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -203,17 +211,17 @@ const THEMES = {
   ["Chat","Chien","animal"],["Café","Thé","boisson"],["Plage","Piscine","loisir"],["Pizza","Burger","nourriture"],
   ["Guitare","Violon","musique"],["Avion","Hélicoptère","transport"],["Soleil","Lune","ciel"],["Instagram","TikTok","internet"],
   ["Netflix","YouTube","écran"],["Banane","Mangue","fruit"],["Ski","Snowboard","sport"],["Football","Rugby","sport"],
-  ["Vampire","Zombie","monstre"],["Mariage","Anniversaire","fête"],["Médecin","Infirmier","métier"],["Pompier","Policier","métier"],
+  ["Vampire","Zombie","monstre"],["Mariage","Fiançailles","fête"],["Médecin","Infirmier","métier"],["Pompier","Policier","métier"],
   ["Bière","Vin","boisson"],["Paris","Londres","ville"],["Harry Potter","Le Seigneur des anneaux","film"],["Lion","Tigre","animal"],
   ["Croissant","Pain au chocolat","boulangerie"],["Montagne","Colline","paysage"],["Pluie","Neige","météo"],["Train","Métro","transport"],
   ["Stylo","Crayon","école"],["Fourchette","Cuillère","cuisine"],["Lit","Canapé","maison"],["Douche","Bain","maison"],
   ["Requin","Dauphin","mer"],["Abeille","Guêpe","insecte"],["Chocolat","Caramel","sucré"],["Glace","Sorbet","dessert"],
-  ["Noël","Halloween","fête"],["Roi","Prince","château"],["Pirate","Viking","histoire"],["Batman","Spider-Man","héros"],
+  ["Noël","Nouvel An","fête"],["Roi","Prince","château"],["Pirate","Viking","histoire"],["Batman","Spider-Man","héros"],
   ["Mario","Sonic","jeu vidéo"],["Piano","Orgue","musique"],["Tennis","Badminton","sport"],["Basket","Volley","sport"],
-  ["Sushi","Ramen","nourriture"],["Crêpe","Gaufre","nourriture"],["Fromage","Beurre","frigo"],["Lunettes","Lentilles","vue"],
+  ["Sushi","Ramen","nourriture"],["Crêpe","Gaufre","nourriture"],["Fromage","Yaourt","frigo"],["Lunettes","Lentilles","vue"],
   ["Montre","Bracelet","accessoire"],["Téléphone","Tablette","objet"],["Ordinateur","Console","objet"],["Forêt","Jungle","nature"],
   ["Désert","Savane","nature"],["Volcan","Geyser","nature"],["Château","Palais","bâtiment"],["Hôpital","Pharmacie","ville"],
-  ["Boulanger","Pâtissier","métier"],["Magicien","Clown","spectacle"],["Cirque","Zoo","sortie"],["Cinéma","Théâtre","sortie"],
+  ["Boulanger","Pâtissier","métier"],["Magicien","Clown","spectacle"],["Trapéziste","Funambule","cirque"],["Cinéma","Théâtre","sortie"],
   ["Camping","Hôtel","vacances"],["Valise","Sac à dos","voyage"],["Tente","Cabane","abri"],["Moto","Scooter","route"],
   ["Vélo","Trottinette","route"],["Ketchup","Mayonnaise","sauce"],["Pâtes","Riz","féculent"],["Tomate","Poivron","légume"],
   ["Fraise","Framboise","fruit"],["Citron","Orange","fruit"],["Dragon","Dinosaure","créature"],["Sorcière","Fée","conte"],
@@ -222,20 +230,20 @@ const THEMES = {
   ["Astronaute","Pilote","métier"],["Fusée","Satellite","espace"],["Étoile","Planète","espace"],["Popcorn","Chips","apéro"]
 ] },
   border: { label: "Border", desc: "Soirées, couple, limite", pairs: [
-    ["Tinder","Bumble","appli"],["Ex","Crush","cœur"],["Vodka","Tequila","alcool"],["Gueule de bois","Mal de crâne","lendemain"],
+    ["Tinder","Bumble","appli"],["Ex","Plan cul","cœur"],["Vodka","Tequila","alcool"],["Gueule de bois","Mal de crâne","lendemain"],
     ["Strip-tease","Pole dance","danse"],["Préservatif","Pilule","précaution"],["Menottes","Bandeau","accessoire"],["Bisou","Suçon","peau"],
     ["Ghoster","Bloquer","téléphone"],["Coup d'un soir","Sex friend","relation"],["Nudes","Sexto","téléphone"],["String","Culotte","sous-vêtement"],
     ["Boîte de nuit","Bar","soirée"],["Joint","Chicha","fumée"],["Pet","Rot","bruit"],["Prison","Garde à vue","police"],
-    ["Belle-mère","Belle-sœur","famille"],["Divorce","Rupture","couple"],["Cocu","Infidèle","couple"],["Doigt d'honneur","Insulte","geste"],
+    ["Belle-mère","Belle-sœur","famille"],["Divorce","Rupture","couple"],["Cocu","Infidèle","couple"],["Doigt d'honneur","Bras d'honneur","geste"],
     ["Strip poker","Action ou vérité","jeu"],["Sauna","Jacuzzi","chaleur"],["Lap dance","Twerk","danse"],["Épilation","Rasage","poils"],
     ["Bourré","Pompette","alcool"],["Fesses","Poitrine","corps"],["Drague","Flirt","séduction"],["Speed dating","Rendez-vous à l'aveugle","rencontre"],
     ["Lingerie","Nuisette","tenue"],["Jaloux","Possessif","défaut"],["Mytho","Hypocrite","défaut"],["Plan à trois","Partouze","nuit"],
-    ["Love hotel","Motel","chambre"],["Shot","Cocktail","verre"],["After","Before","soirée"],["Fessée","Chatouilles","jeu"],
-    ["Gynécologue","Urologue","médecin"],["Test de grossesse","Pilule du lendemain","pharmacie"],["Body shot","Beer pong","soirée"],["OnlyFans","Pornhub","site"],
+    ["Love hotel","Motel","chambre"],["Shot","Cocktail","verre"],["After","Before","soirée"],["Fessée","Martinet","jeu"],
+    ["Gynécologue","Urologue","médecin"],["Test de grossesse","Pilule du lendemain","pharmacie"],["Beer pong","Jeu à boire","soirée"],["OnlyFans","Pornhub","site"],
     ["Enterrement","Crémation","mort"],["Cercueil","Urne","mort"],["Testament","Héritage","notaire"],["Croque-mort","Médecin légiste","métier"],
-    ["Cimetière","Morgue","mort"],["Corbillard","Ambulance","véhicule"],["Pierre tombale","Épitaphe","mort"],["Assurance vie","Héritage","argent"],
+    ["Cimetière","Morgue","mort"],["Corbillard","Ambulance","véhicule"],["Pierre tombale","Épitaphe","mort"],["Assurance vie","Assurance obsèques","argent"],
     ["Scène de crime","Autopsie","enquête"],["Poison","Arsenic","meurtre"],["Tueur en série","Cannibale","fait divers"],["Guillotine","Chaise électrique","exécution"],
-    ["Faire-part de décès","Faire-part de mariage","courrier"],["Dernières volontés","Dernier repas","fin"],["Veuve noire","Mante religieuse","mari"],["Pacte avec le diable","Exorcisme","enfer"]
+    ["Faire-part de décès","Avis de décès","courrier"],["Dernier repas","Dernière cigarette","fin"],["Veuve noire","Mante religieuse","mari"],["Exorcisme","Possession","enfer"]
   ] },
   netflix: { label: "Netflix", desc: "Manga, Disney, séries, films", pairs: [
     ["Naruto","Sasuke","manga"],["Goku","Vegeta","manga"],["Luffy","Zoro","manga"],["Tanjiro","Nezuko","manga"],
@@ -244,10 +252,10 @@ const THEMES = {
     ["Ariel","Vaiana","Disney"],["Stitch","Olaf","Disney"],["Le Roi Lion","Le Livre de la jungle","Disney"],["Woody","Buzz l'Éclair","Pixar"],
     ["Shrek","Fiona","film d'animation"],["Gru","Minion","film d'animation"],["Harry Potter","Ron Weasley","sorcier"],["Dark Vador","Kylo Ren","Star Wars"],
     ["Iron Man","Captain America","Marvel"],["Thor","Loki","Marvel"],["Spider-Man","Deadpool","super-héros"],["Batman","Superman","super-héros"],
-    ["Joker","Harley Quinn","méchant"],["Jack Sparrow","Barbe Noire","pirate"],["Gollum","Dobby","créature"],["Titanic","Avatar","film"],
+    ["Joker","Harley Quinn","méchant"],["Jack Sparrow","Barbe Noire","pirate"],["Gollum","Dobby","créature"],["Titanic","Pearl Harbor","film"],
     ["Stranger Things","Dark","série"],["La Casa de Papel","Lupin","série"],["Squid Game","Alice in Borderland","série"],["Mercredi","Morticia","famille Addams"],
     ["Le Professeur","Berlin","braquage"],["Walter White","Jesse Pinkman","série"],["Friends","How I Met Your Mother","sitcom"],["Bob l'éponge","Patrick","dessin animé"],
-    ["Homer Simpson","Peter Griffin","dessin animé"],["Peaky Blinders","The Crown","série"],["Bridgerton","Emily in Paris","série"],["Eleven","Max","Stranger Things"]
+    ["Homer Simpson","Peter Griffin","dessin animé"],["Peaky Blinders","Narcos","série"],["Bridgerton","Gossip Girl","série"],["Eleven","Max","Stranger Things"]
   ] }
 };
 
@@ -267,14 +275,15 @@ const HINT_EMOJI = { appli: "📱", "téléphone": "📱", "réseau": "📲", si
   "sous-vêtement": "👙", tenue: "👙", corps: "🍑", jeu: "🎲", nuit: "🌙", chambre: "🛏️", chaleur: "♨️", "précaution": "🛡️", pharmacie: "💊",
   "médecin": "🩺", poils: "🪒", bruit: "💨", police: "🚓", geste: "🖕", mort: "💀", notaire: "📜", "métier": "⚰️", "véhicule": "🚑", argent: "💰",
   "enquête": "🔍", meurtre: "☠️", "fait divers": "🔪", "exécution": "⚖️", courrier: "✉️", fin: "🕯️", mari: "🕷️", enfer: "😈" };
-const imgCache = {};
+const imgCache = {}, imgPage = {};
+const picSource = (word, theme) => theme !== "border" && imgPage[word] ? `<a class="src" href="${esc(imgPage[word])}" target="_blank" rel="noopener">Image : Wikipédia</a>` : "";
 function wordPic(word, hint, theme) {
   if (theme === "border") return `<span class="pic emoji" aria-hidden="true">${HINT_EMOJI[hint] || "🃏"}</span>`;
   if (!(word in imgCache)) {
     imgCache[word] = "";
     fetch("https://fr.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent((WIKI_TITLE[word] || word).replace(/ /g, "_")))
       .then(r => r.ok ? r.json() : null)
-      .then(j => { if (j && j.type !== "disambiguation" && j.thumbnail && j.thumbnail.source) { imgCache[word] = j.thumbnail.source; render(); } })
+      .then(j => { if (j && j.type !== "disambiguation" && j.thumbnail && j.thumbnail.source) { imgCache[word] = j.thumbnail.source; imgPage[word] = j.content_urls?.desktop?.page || ""; render(); } })
       .catch(() => {});
   }
   return imgCache[word] ? `<img class="pic" src="${esc(imgCache[word])}" alt="" loading="lazy">` : `<span class="pic emoji" aria-hidden="true">🖼️</span>`;
@@ -285,6 +294,7 @@ const DEFAULT_SETTINGS = { uc: 1, ghost: 0, manches: 3, tours: 2, theme: "classi
 const NS = "taupe-fabgeo-v1/";
 const BROKERS = window.TAUPE_BROKERS || ["wss://broker.emqx.io:8084/mqtt", "wss://broker.hivemq.com:8884/mqtt", "wss://test.mosquitto.org:8081/mqtt"];
 const LOCAL_HOST = "host";
+const MAX_CLUE = 20, TURN_MS = 30000;
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -325,8 +335,15 @@ function startManche(G, local) {
   const order = speakingOrder(ids, roles, G.lastFirst);
   G.lastFirst = order[0];
   ids.forEach(id => { if (G.scores[id] == null) G.scores[id] = 0; });
-  Object.assign(G, { status: local ? "deal" : "clues", deal: 0, manche: G.manche + 1, cycle: 1, tour: 1, speaker: 0, toursNow: s.tours,
+  Object.assign(G, { status: local ? "deal" : "clues", deal: 0, manche: G.manche + 1, cycle: 1, tour: 1, speaker: 0, toursNow: s.tours, turnStart: Date.now(),
     order, alive: order.slice(), inRound: ids, roles, words: { civil: a, uc: b, hint }, lastOut: null, winner: null });
+}
+const turnKey = r => `${r.manche}-${r.cycle}-${r.tour}-${r.speaker}`;
+function turnLeft() {
+  const r = S.room;
+  if (!r || r.status !== "clues" || isLocal()) return null;
+  if (S.mode === "host" && G) return TURN_MS - (Date.now() - (G.turnStart || Date.now()));
+  return S.deadline && S.deadline.key === turnKey(r) ? S.deadline.at - Date.now() : null;
 }
 function speakingOrder(ids, roles, avoidFirst) {
   const order = shuffle(ids);
@@ -336,6 +353,7 @@ function speakingOrder(ids, roles, avoidFirst) {
   return order.slice(first).concat(order.slice(0, first));
 }
 function advance(G) {
+  G.turnStart = Date.now();
   G.speaker++;
   if (G.speaker >= G.order.length) { G.speaker = 0; G.tour++; }
   const max = G.toursNow || G.settings.tours;
@@ -411,7 +429,7 @@ function apply(G, actor, a) {
       return "";
     case "clue": {
       if (st !== "clues" || G.order[G.speaker] !== actor) return "Ce n'est pas ton tour.";
-      const word = str(a.word); if (!word) return "Écris un mot avant d'envoyer.";
+      const word = String(a.word ?? "").trim().slice(0, MAX_CLUE); if (!word) return "Écris un mot avant d'envoyer.";
       G.clues = G.clues.filter(c => !(c.manche === G.manche && c.cycle === G.cycle && c.tour === G.tour && c.uid === actor));
       G.clues.push({ uid: actor, manche: G.manche, cycle: G.cycle, tour: G.tour, word });
       advance(G); return "";
@@ -439,7 +457,7 @@ function apply(G, actor, a) {
     case "continue":
       if (!host || st !== "result") return "";
       G.order = speakingOrder(G.alive, G.roles, G.lastFirst); G.lastFirst = G.order[0];
-      Object.assign(G, { status: "clues", cycle: G.cycle + 1, tour: 1, speaker: 0, toursNow: 1 });
+      Object.assign(G, { status: "clues", cycle: G.cycle + 1, tour: 1, speaker: 0, toursNow: 1, turnStart: Date.now() });
       return "";
     case "toVote": if (host && st === "clues") Object.assign(G, { status: "vote", speaker: 0 }); return "";
     case "pass": if (st === "clues" && G.order[G.speaker] === actor) advance(G); return "";
@@ -584,6 +602,19 @@ async function hostRoom(name, resume) {
   c.subscribe(topic("act"), { qos: 1 }, announce);
   // Re-announce regularly: after a crash, the old connection's "gone" notice can arrive late and must not win.
   const beat = setInterval(() => { if (S.client !== c) clearInterval(beat); else if (c.connected) pub(topic("host"), { on: true, at: Date.now() }, true); }, 10000);
+  // Turn timer: tell everyone the time left, and pass the turn of a player who runs out of time.
+  G.turnStart = Date.now();
+  let lastTick = 0;
+  const clock = setInterval(() => {
+    if (S.client !== c || S.mode !== "host") { clearInterval(clock); return; }
+    if (!G || G.status !== "clues") return;
+    const left = TURN_MS - (Date.now() - (G.turnStart || Date.now()));
+    if (left < -1500) { advance(G); persist(); broadcast(); refresh(); lastTick = 0; }
+    if (Date.now() - lastTick > 2000 && c.connected) {
+      lastTick = Date.now();
+      c.publish(topic("tick"), JSON.stringify({ key: turnKey(G), left: Math.max(0, TURN_MS - (Date.now() - G.turnStart)) }), { qos: 0 });
+    }
+  }, 500);
   c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe(topic("act"), { qos: 1 }, announce); render(); } });
   S.net = "ok"; keepAwake(); persist(); refresh();
 }
@@ -621,6 +652,7 @@ async function joinRoom(code, name) {
   }
   const c = found;
   wire(c, (t, m) => {
+    if (t === topic("tick")) { if (m && m.key) S.deadline = { key: m.key, at: Date.now() + (+m.left || 0) }; return; }
     if (t === topic("host")) {
       if (!m || !m.on) { S.net = "hostaway"; render(); }
       else if (S.net === "hostaway" || S.net === "lost") { S.net = "ok"; S.err = ""; hello(); render(); }
@@ -632,8 +664,8 @@ async function joinRoom(code, name) {
     else if (m.t === "kicked") { leave(); S.err = "L'hôte t'a retiré·e du salon."; render(); }
   });
   const hello = () => pub(topic("act"), { t: "hello", uid: S.uid, name }, false);
-  c.subscribe(topic("p", S.uid), { qos: 1 }, hello);
-  c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe([topic("p", S.uid), topic("host")], { qos: 1 }, hello); render(); } });
+  c.subscribe([topic("p", S.uid), topic("tick")], { qos: 1 }, hello);
+  c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe([topic("p", S.uid), topic("host"), topic("tick")], { qos: 1 }, hello); render(); } });
   S.net = "ok"; keepAwake(); render();
 }
 function closeNet() {
@@ -696,7 +728,9 @@ function viewHome() {
       <span class="tag ghost">Fantôme</span><span>Pas de mot, juste un indice très large. Bluffe. Si on t'élimine, devine le mot des civils pour gagner.</span>
     </div>
     <p class="small muted">Points : civil gagnant ${POINTS.civil}, Taupe gagnante ${POINTS.uc}, Fantôme gagnant ${POINTS.ghost}.</p>
-  </div>`;
+  </div>
+  <p class="credits">Taupe est un jeu amateur et gratuit, sans lien avec les marques, œuvres et personnes citées comme mots à deviner.<br>
+    Images : <a href="https://fr.wikipedia.org" target="_blank" rel="noopener">Wikipédia</a> et Wikimedia Commons, sous licences libres (auteurs et licences indiqués sur la page de chaque image).</p>`;
 }
 function bar() {
   const net = S.mode === "guest" && S.net === "hostaway" && S.room
@@ -813,8 +847,9 @@ function viewClues() {
     <button class="primary" data-a="toVote">Passer au vote</button>
     <button class="ghost" data-a="peekStart">Revoir mon mot</button></div>`;
   return `${bar()}${statusLine()}${mySlip()}
-  <div class="panel"><h2>${mine ? "À toi de jouer" : `C'est au tour de ${esc(nameOf(sp))}`}</h2>
-    ${mine ? `<div class="row"><input type="text" id="clueInput" class="grow" maxlength="40" placeholder="Ton indice en un mot" data-enter="clue" autocomplete="off">
+  <div class="panel"><div class="status"><h2>${mine ? "À toi de jouer" : `C'est au tour de ${esc(nameOf(sp))}`}</h2><span class="timer" id="turnTimer" aria-live="off"></span></div>
+    <div class="timebar"><i id="turnBar"></i></div>
+    ${mine ? `<div class="row"><input type="text" id="clueInput" class="grow" maxlength="20" placeholder="Ton indice (20 caractères max)" data-enter="clue" autocomplete="off">
       <button class="primary" data-a="clue">Envoyer</button></div>
       <div class="row"><button class="ghost grow" data-a="pass">Passer mon tour</button></div>
       <p class="small muted">Ne donne pas le mot. Assez précis pour ton camp, assez vague pour piéger les autres.</p>` : ""}
@@ -896,8 +931,8 @@ function viewRoundEnd() {
   return `${bar()}${statusLine()}
   <div class="panel reveal stack"><p class="big win-${r.winner}">${title}</p>${r.lastOut ? `<div class="stack">${outLine(r.lastOut)}</div>` : ""}</div>
   <div class="panel"><h3>Les mots de la manche</h3>
-    <div class="words"><div class="c">${wordPic(r.words.civil, r.words.hint, r.settings.theme)}<span class="label">Civils</span><b>${esc(r.words.civil)}</b></div>
-      <div class="u">${wordPic(r.words.uc, r.words.hint, r.settings.theme)}<span class="label">Taupe</span><b>${esc(r.words.uc)}</b></div>
+    <div class="words"><div class="c">${wordPic(r.words.civil, r.words.hint, r.settings.theme)}<span class="label">Civils</span><b>${esc(r.words.civil)}</b>${picSource(r.words.civil, r.settings.theme)}</div>
+      <div class="u">${wordPic(r.words.uc, r.words.hint, r.settings.theme)}<span class="label">Taupe</span><b>${esc(r.words.uc)}</b>${picSource(r.words.uc, r.settings.theme)}</div>
       <div class="g"><span class="label">Indice Fantôme</span><b>${esc(r.words.hint)}</b></div></div>
     <ul class="players">${Object.entries(r.roles).map(([id, { role }]) => `<li><span class="name">${esc(nameOf(id))}${you(id)}</span><span class="tag ${role}">${ROLE_LABEL[role]}</span></li>`).join("")}</ul></div>
   <div class="panel"><h3>Scores</h3>${scoreList()}</div>
@@ -992,6 +1027,19 @@ const ACTIONS = {
   },
   share: async () => { try { await navigator.share({ title: "Taupe", text: `Rejoins ma partie de Taupe ! Salon ${S.code}`, url: inviteLink() }); } catch {} },
 };
+// Countdown display, updated in place so typing is never interrupted.
+setInterval(() => {
+  const el = document.getElementById("turnTimer"), bar = document.getElementById("turnBar");
+  if (!el) return;
+  const left = turnLeft();
+  if (left == null) { el.textContent = ""; if (bar) bar.style.width = "100%"; return; }
+  const sec = Math.max(0, Math.ceil(left / 1000));
+  el.textContent = sec + " s"; el.classList.toggle("low", sec <= 10);
+  if (bar) { bar.style.width = Math.max(0, Math.min(100, left / TURN_MS * 100)) + "%"; bar.classList.toggle("low", sec <= 10); }
+  // Out of time: send what the player already typed rather than losing it.
+  const key = turnKey(S.room), input = document.getElementById("clueInput");
+  if (left <= 300 && input && input.value.trim() && S.autoSent !== key) { S.autoSent = key; ACTIONS.clue(); }
+}, 250);
 app.addEventListener("click", e => {
   const el = e.target.closest("[data-a]"); if (!el || el.disabled) return;
   ACTIONS[el.dataset.a]?.(el);
