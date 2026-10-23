@@ -230,6 +230,13 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .toggle.on i::after { left: 21px; background: var(--accent); }
 .invite b.plain { font-family: inherit; letter-spacing: 0; }
 @media (prefers-reduced-motion: reduce) { .fx, .vreveal li { animation-duration: .01s; } }
+.special { display: flex; gap: 12px; align-items: center; background: rgba(171,156,255,.1); border: 1px solid rgba(171,156,255,.45); border-radius: 12px; padding: 10px 14px; }
+.special .icon { font-size: 1.5rem; line-height: 1; font-weight: 700; color: var(--ghost); }
+.special > span:last-child { display: flex; flex-direction: column; gap: 1px; }
+.special b { font-family: var(--f-display); font-size: .9rem; color: var(--ghost); }
+.special span span { font-size: .82rem; color: var(--muted); }
+.traitor { font-size: .8rem; color: var(--mask); font-weight: 700; margin-top: 4px; }
+.toggle:disabled { opacity: 1; cursor: default; }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -304,24 +311,24 @@ const THEMES = {
     ["Shrek","Fiona","film d'animation"],["Gru","Minion","film d'animation"],["Harry Potter","Ron Weasley","sorcier"],["Dark Vador","Kylo Ren","Star Wars"],
     ["Iron Man","Captain America","Marvel"],["Thor","Loki","Marvel"],["Spider-Man","Deadpool","super-héros"],["Batman","Superman","super-héros"],
     ["Joker","Harley Quinn","méchant"],["Jack Sparrow","Barbe Noire","pirate"],["Gollum","Dobby","créature"],["Titanic","Pearl Harbor","film"],
-    ["Stranger Things","Dark","série"],["La Casa de Papel","Lupin","série"],["Squid Game","Alice in Borderland","série"],["Mercredi","Morticia","famille Addams"],
+    ["Stranger Things","Ça","monstre"],["La Casa de Papel","Lupin","série"],["Squid Game","Alice in Borderland","série"],["Mercredi","Morticia","famille Addams"],
     ["Le Professeur","Berlin","braquage"],["Walter White","Jesse Pinkman","série"],["Friends","How I Met Your Mother","sitcom"],["Bob l'éponge","Patrick","dessin animé"],
     ["Homer Simpson","Peter Griffin","dessin animé"],["Peaky Blinders","Narcos","série"],["Bridgerton","Gossip Girl","série"],["Eleven","Max","Stranger Things"],
     ["Kakashi","Jiraya","manga"],["Itachi","Madara","manga"],["Nami","Robin","manga"],["Sanji","Usopp","manga"],
     ["Zenitsu","Inosuke","manga"],["Mikasa","Armin","manga"],["Gon","Kirua","manga"],["Saitama","Genos","manga"],
-    ["Deku","Bakugo","manga"],["Gojo","Sukuna","manga"],["Dragon Ball","Hunter x Hunter","anime"],["Death Note","Code Geass","anime"],
+    ["Deku","Bakugo","manga"],["Gojo","Sukuna","manga"],["Dragon Ball","Les Chevaliers du Zodiaque","anime"],["Hunter x Hunter","Fullmetal Alchemist","anime"],["Death Note","Code Geass","anime"],
     ["Demon Slayer","Jujutsu Kaisen","anime"],["L'Attaque des Titans","Tokyo Ghoul","anime"],["Dracaufeu","Tortank","Pokémon"],["Sacha","Pierre","Pokémon"],
     ["Aladdin","Jasmine","Disney"],["Mulan","Pocahontas","Disney"],["Blanche-Neige","Cendrillon","Disney"],["Jafar","Scar","méchant"],
     ["Ursula","Maléfique","méchant"],["Nemo","Dory","Pixar"],["Flash McQueen","Martin","Pixar"],["WALL-E","EVE","Pixar"],
     ["Monstres et Cie","Vice-Versa","Pixar"],["Ratatouille","Là-haut","Pixar"],["Timon","Pumbaa","Disney"],["Winnie l'ourson","Porcinet","Disney"],
     ["Peter Pan","Capitaine Crochet","Disney"],["Game of Thrones","House of the Dragon","série"],["Jon Snow","Daenerys","Game of Thrones"],["Breaking Bad","Better Call Saul","série"],
     ["The Walking Dead","The Last of Us","série"],["Sherlock","Dr House","série"],["Grey's Anatomy","Urgences","série"],["Prison Break","Orange Is the New Black","série"],
-    ["Euphoria","Skins","série"],["Élite","Riverdale","série"],["The Office","Brooklyn Nine-Nine","sitcom"],["The Boys","Invincible","super-héros"],
-    ["Rick","Morty","dessin animé"],["Tony Montana","Vito Corleone","gangster"],["Rocky","Creed","boxe"],["Terminator","RoboCop","robot"],
+    ["Avengers","Justice League","super-héros"],["Star Wars","Star Trek","espace"],["The Office","Brooklyn Nine-Nine","sitcom"],["Jurassic Park","King Kong","film"],
+    ["Rick","Morty","dessin animé"],["Bienvenue chez les Ch'tis","Intouchables","comédie française"],["Le Seigneur des anneaux","Le Hobbit","film"],["Rocky","Creed","boxe"],["Terminator","RoboCop","robot"],
     ["Indiana Jones","Lara Croft","aventurier"],["James Bond","Ethan Hunt","espion"],["Wolverine","Magneto","X-Men"],
     ["Black Panther","Black Widow","Marvel"],["Thanos","Ultron","méchant"],["Voldemort","Sauron","méchant"],["Hermione","Ginny","sorcier"],
     ["Dumbledore","Gandalf","sorcier"],["Yoda","Obi-Wan","Star Wars"],["Chewbacca","R2-D2","Star Wars"],["Astérix","Obélix","BD"],
-    ["Tintin","Spirou","BD"],["Tom","Jerry","dessin animé"],["Bugs Bunny","Daffy Duck","dessin animé"],["Shin-chan","Doraemon","anime"]
+    ["Tintin","Spirou","BD"],["Tom","Jerry","dessin animé"],["Bugs Bunny","Daffy Duck","dessin animé"]
   ] }
 };
 
@@ -335,7 +342,7 @@ const WIKI_TITLE = { "Mercredi": "Mercredi Addams", "Morticia": "Morticia Addams
   "Minion": "Les Minions", "Stitch": "Stitch (Disney)", "Olaf": "Olaf (La Reine des neiges)", "Elsa": "Elsa (La Reine des neiges)",
   "Ariel": "Ariel (Disney)", "Vaiana": "Vaiana, la légende du bout du monde", "Simba": "Simba", "Woody": "Woody (Toy Story)", "Buzz l'Éclair": "Buzz l'Éclair",
   "Livaï": "Livaï Ackerman", "Eren": "Eren Jäger", "Tanjiro": "Tanjirō Kamado", "Nezuko": "Nezuko Kamado", "Chihiro": "Le Voyage de Chihiro",
-  "Totoro": "Mon voisin Totoro", "Le Roi Lion": "Le Roi lion", "Walter White": "Walter White (Breaking Bad)", "Jesse Pinkman": "Breaking Bad", "Dark": "Dark (série télévisée)",
+  "Totoro": "Mon voisin Totoro", "Le Roi Lion": "Le Roi lion", "Walter White": "Walter White (Breaking Bad)", "Jesse Pinkman": "Breaking Bad", "Ça": "Ça (film, 2017)", "Avengers": "Avengers (film)", "Star Trek": "Star Trek", "King Kong": "King Kong (film, 2005)", "Le Hobbit": "Le Hobbit (trilogie)",
   "Martin": "Martin (Cars)", "Sacha": "Sacha (Pokémon)", "Pierre": "Pierre (Pokémon)", "Tom": "Tom et Jerry", "Jerry": "Tom et Jerry",
   "Rick": "Rick et Morty", "Morty": "Rick et Morty", "EVE": "WALL-E", "Gon": "Gon Freecss", "Kirua": "Kirua Zoldik", "Deku": "Izuku Midoriya",
   "Bakugo": "Katsuki Bakugo", "Gojo": "Satoru Gojo", "Sukuna": "Jujutsu Kaisen", "Nami": "Nami (One Piece)", "Robin": "Nico Robin",
@@ -366,12 +373,21 @@ function wordPic(word, hint, theme) {
   return imgCache[word] ? `<img class="pic" src="${esc(imgCache[word])}" alt="" loading="lazy">` : `<span class="pic emoji" aria-hidden="true">🖼️</span>`;
 }
 const ROLE_LABEL = { civil: "Civil", uc: "Taupe", ghost: "Fantôme" };
-const POINTS = { civil: 2, uc: 10, ghost: 6 };
-const DEFAULT_SETTINGS = { uc: 1, ghost: 0, manches: 3, tours: 2, theme: "classique" };
+const POINTS = { civil: 2, uc: 10, ghost: 6, traitor: 8, wrongVote: -3 };
+const DEFAULT_SETTINGS = { uc: 1, ghost: 0, manches: 3, tours: 2, theme: "classique", specials: true };
 const NS = "taupe-fabgeo-v1/";
 const BROKERS = window.TAUPE_BROKERS || ["wss://broker.emqx.io:8084/mqtt", "wss://broker.hivemq.com:8884/mqtt", "wss://test.mosquitto.org:8081/mqtt"];
 const LOCAL_HOST = "host";
-const MAX_CLUE = 20, TURN_MS = 30000;
+const MAX_CLUE = 20, TURN_MS = 30000, EXPRESS_MS = 10000;
+// Special rounds: about one manche in four. Secret ones are only revealed at the end of the manche.
+const SPECIALS = {
+  ghostPlus: { label: "Fantôme surprise", icon: "👻", secret: true, desc: "Un Fantôme de plus que prévu s'était glissé parmi vous." },
+  noTaupe: { label: "Pas de Taupe", icon: "🕊️", secret: true, desc: "Tout le monde avait le même mot. Le joueur éliminé perd des points." },
+  traitor: { label: "Le Traître", icon: "🗡️", secret: true, desc: "Un civil connaissait les imposteurs et jouait pour eux." },
+  express: { label: "Chrono express", icon: "⚡", secret: false, desc: "10 secondes seulement pour écrire son indice." },
+  double: { label: "Points doublés", icon: "✖️2", secret: false, desc: "Cette manche rapporte (et fait perdre) le double." }
+};
+const turnMs = r => r && r.special === "express" ? EXPRESS_MS : TURN_MS;
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -423,20 +439,26 @@ function startManche(G, local) {
   if (custom) { G.usedPairs.pop(); custom.used = true; [a, b, hint] = [custom.a, custom.b, custom.hint || "mot perso"]; }
   if (Math.random() < .5) [a, b] = [b, a];
   const roles = {};
-  ids.forEach((id, i) => { roles[id] = { role: i < s.uc ? "uc" : i < s.uc + s.ghost ? "ghost" : "civil" }; });
+  const n = ids.length, imp = s.uc + s.ghost;
+  const pool = !s.specials || Math.random() > .25 ? [] : ["noTaupe", "double",
+    ...(n - imp - 1 > imp + 1 ? ["ghostPlus"] : []), ...(!local ? ["express"] : []), ...(imp >= 1 && n - imp >= 3 ? ["traitor"] : [])];
+  const special = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+  const nUc = special === "noTaupe" ? 0 : s.uc, nGhost = special === "noTaupe" ? 0 : s.ghost + (special === "ghostPlus" ? 1 : 0);
+  ids.forEach((id, i) => { roles[id] = { role: i < nUc ? "uc" : i < nUc + nGhost ? "ghost" : "civil" }; });
+  const traitor = special === "traitor" ? shuffle(ids.filter(id => roles[id].role === "civil"))[0] : null;
   const order = speakingOrder(ids, roles, G.lastFirst);
   G.lastFirst = order[0];
   ids.forEach(id => { if (G.scores[id] == null) G.scores[id] = 0; });
   Object.assign(G, { status: local ? "deal" : "clues", deal: 0, manche: G.manche + 1, cycle: 1, tour: 1, speaker: 0, toursNow: s.tours, turnStart: Date.now(),
     order, alive: order.slice(), inRound: ids, roles, words: { civil: a, uc: b, hint, custom: !!custom }, lastOut: null, winner: null,
-    referee: custom ? custom.by : null, chat: [], lastVotes: null,
+    referee: custom ? custom.by : null, chat: [], lastVotes: null, special, traitor,
     mime: local && s.mime ? (shuffle(ids.filter(id => roles[id].role !== "ghost"))[0] || null) : null });
 }
 const turnKey = r => `${r.manche}-${r.cycle}-${r.tour}-${r.speaker}`;
 function turnLeft() {
   const r = S.room;
   if (!r || r.status !== "clues" || isLocal()) return null;
-  if (S.mode === "host" && G) return TURN_MS - (Date.now() - (G.turnStart || Date.now()));
+  if (S.mode === "host" && G) return turnMs(G) - (Date.now() - (G.turnStart || Date.now()));
   return S.deadline && S.deadline.key === turnKey(r) ? S.deadline.at - Date.now() : null;
 }
 function speakingOrder(ids, roles, avoidFirst) {
@@ -460,12 +482,15 @@ function winnerFor(G) {
   return null;
 }
 function endManche(G, winner, ghostUid) {
+  const mult = G.special === "double" ? 2 : 1;
   Object.entries(G.roles).forEach(([id, { role }]) => {
     let p = 0;
-    if (winner === "civils" && role === "civil") p = POINTS.civil;
-    if (winner === "imposteurs" && role !== "civil") p = POINTS[role];
-    if (winner === "ghost" && id === ghostUid) p = POINTS.ghost;
-    G.scores[id] = (G.scores[id] || 0) + p;
+    if (id === G.traitor) p = winner === "imposteurs" ? POINTS.traitor : 0;
+    else if (winner === "civils" && role === "civil") p = POINTS.civil;
+    else if (winner === "imposteurs" && role !== "civil") p = POINTS[role];
+    else if (winner === "ghost" && id === ghostUid) p = POINTS.ghost;
+    else if (winner === "none" && id === G.lastOut?.uid) p = POINTS.wrongVote;
+    G.scores[id] = (G.scores[id] || 0) + p * mult;
   });
   G.winner = winner; G.status = "roundEnd";
 }
@@ -473,6 +498,7 @@ function eliminate(G, out) {
   const role = G.roles[out].role;
   G.alive = G.alive.filter(id => id !== out); G.order = G.order.filter(id => id !== out);
   G.lastOut = { uid: out, role };
+  if (G.special === "noTaupe") { endManche(G, "none"); return; }
   if (role === "ghost") { G.status = "ghostGuess"; return; }
   const w = winnerFor(G);
   if (w) endManche(G, w); else G.status = "result";
@@ -484,7 +510,7 @@ function resolveVotes(G) {
   const max = Math.max(0, ...Object.values(tally));
   const top = Object.keys(tally).filter(k => tally[k] === max);
   G.lastVotes = { manche: G.manche, cycle: G.cycle, list: G.votes.filter(v => v.manche === G.manche && v.cycle === G.cycle && G.alive.includes(v.uid)).map(v => ({ uid: v.uid, target: v.target })) };
-  if (top.length !== 1) { G.status = "result"; G.lastOut = { tie: true }; return; }
+  if (top.length !== 1) { G.lastOut = { tie: true }; if (G.special === "noTaupe") endManche(G, "none"); else G.status = "result"; return; }
   eliminate(G, top[0]);
 }
 // Returns an error message for the actor, or "".
@@ -578,6 +604,7 @@ function apply(G, actor, a) {
     }
     case "delPair": G.custom = (G.custom || []).filter(c => !(c.id === a.id && (c.by === actor || host) && !c.used)); return "";
     case "mime": if (host && st === "lobby") G.settings.mime = !G.settings.mime; return "";
+    case "specials": if (host && st === "lobby") G.settings.specials = !G.settings.specials; return "";
     case "newGame":
       if (!host) return "";
       Object.assign(G, { status: "lobby", manche: 0, scores: {}, clues: [], votes: [], inRound: [], order: [], alive: [],
@@ -589,6 +616,10 @@ function apply(G, actor, a) {
 // What one player is allowed to see: their own role and word, plus roles already revealed.
 function viewFor(G, uid) {
   const v = clone(G);
+  const ended = ["roundEnd", "final"].includes(G.status);
+  if (!ended && G.special && SPECIALS[G.special]?.secret) v.special = null;
+  if (!ended) v.traitor = G.traitor === uid ? uid : null;
+  v.traitorInfo = !ended && G.traitor === uid ? Object.keys(G.roles).filter(id => G.roles[id].role !== "civil") : null;
   v.myCustom = (G.custom || []).filter(c => c.by === uid && !c.used);
   v.customCount = (G.custom || []).filter(c => !c.used).length;
   delete v.custom;
@@ -705,7 +736,7 @@ async function hostRoom(name, resume) {
     else if (m.t === "bye") { if (G.players[uid]) G.players[uid].online = false; }
     else if (m.t === "act" && G.players[uid]) {
       const a = m.a || {};
-      if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal", "toVote", "theme", "mime"].includes(a.type)) return;
+      if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal", "toVote", "theme", "mime", "specials"].includes(a.type)) return;
       const e = apply(G, uid, a);
       if (e) pub(topic("p", uid), { t: "err", m: e }, false);
       if (a.type === "leave") { lastSent.delete(uid); pub(topic("p", uid), null, true); }
@@ -724,11 +755,11 @@ async function hostRoom(name, resume) {
   const clock = setInterval(() => {
     if (S.client !== c || S.mode !== "host") { clearInterval(clock); return; }
     if (!G || G.status !== "clues") return;
-    const left = TURN_MS - (Date.now() - (G.turnStart || Date.now()));
+    const left = turnMs(G) - (Date.now() - (G.turnStart || Date.now()));
     if (left < -1500) { advance(G); persist(); broadcast(); refresh(); lastTick = 0; }
     if (Date.now() - lastTick > 2000 && c.connected) {
       lastTick = Date.now();
-      c.publish(topic("tick"), JSON.stringify({ key: turnKey(G), left: Math.max(0, TURN_MS - (Date.now() - G.turnStart)) }), { qos: 0 });
+      c.publish(topic("tick"), JSON.stringify({ key: turnKey(G), left: Math.max(0, turnMs(G) - (Date.now() - G.turnStart)) }), { qos: 0 });
     }
   }, 500);
   c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe([topic("act"), topic("fx")], { qos: 1 }, announce); render(); } });
@@ -888,6 +919,8 @@ function settingsPanel() {
       <div class="themes" role="radiogroup" aria-label="Thème des mots">${Object.entries(THEMES).map(([k, t]) =>
         `<button class="theme ${k === cur ? "on" : ""}" role="radio" aria-checked="${k === cur}" data-a="theme" data-v="${k}" ${h ? "" : "disabled"}>
           <b>${t.label}</b><span>${t.desc}</span></button>`).join("")}</div></div>
+    <button class="toggle ${S.room.settings.specials ? "on" : ""}" data-a="specials" role="switch" aria-checked="${!!S.room.settings.specials}" ${h ? "" : "disabled"}>
+      <span><b>Manches spéciales</b><span>Environ une manche sur quatre : Fantôme surprise, Pas de Taupe, Traître${isLocal() ? "" : ", Chrono express"}, Points doublés.</span></span><i></i></button>
     ${isLocal() ? `<button class="toggle ${S.room.settings.mime ? "on" : ""}" data-a="mime" role="switch" aria-checked="${!!S.room.settings.mime}">
       <span><b>Mister Mime</b><span>À chaque manche, un joueur tiré au sort doit mimer ses indices, sans parler.</span></span><i></i></button>` : ""}
     <div class="settings">
@@ -928,6 +961,12 @@ function viewLobby() {
   ${customPanel()}
   ${settingsPanel()}`;
 }
+function traitorLine(uid) {
+  const r = S.room;
+  if (!r.traitor || r.traitor !== uid || ["roundEnd", "final"].includes(r.status)) return "";
+  const imps = r.traitorInfo || Object.keys(r.roles || {}).filter(id => r.roles[id].role !== "civil");
+  return `<span class="traitor">🗡️ Tu es le Traître : ${imps.map(id => esc(nameOf(id))).join(", ")} ${imps.length > 1 ? "sont les imposteurs" : "est l'imposteur"}. Aide ${imps.length > 1 ? "les" : "le"} sans te faire griller.</span>`;
+}
 function slip(uid, key) {
   const r = S.room, mine = r.roles?.[uid];
   if (!mine) return r.referee === uid ? `<p class="invite">Les mots de cette manche viennent de toi : tu arbitres et tu regardes. Tu rejoues à la manche suivante.</p>` : `<p class="small muted">Partie en cours. Tu joueras à la manche suivante.</p>`;
@@ -938,12 +977,17 @@ function slip(uid, key) {
   const word = isGhost ? null : r.words[mine.role];
   const pic = isGhost ? `<span class="pic emoji" aria-hidden="true">👻</span>` : wordPic(word, r.words.hint || "", r.settings.theme);
   return `<button class="slip shown withpic ${isGhost ? "ghostslip" : ""}" data-a="reveal" aria-pressed="true">${pic}<span class="txt"><span class="label">${isGhost ? (isLocal() ? esc(nameOf(uid)) + " est le Fantôme" : "Tu es le Fantôme") : who}</span>
-    <span class="word">${esc(isGhost ? "Indice : " + r.words.hint : word)}</span><span class="sub">Touche pour cacher</span></span></button>`;
+    <span class="word">${esc(isGhost ? "Indice : " + r.words.hint : word)}</span>${traitorLine(uid)}<span class="sub">Touche pour cacher</span></span></button>`;
 }
 const mySlip = () => isLocal() ? "" : slip(S.uid, S.code + S.room.manche);
+function specialBanner() {
+  const r = S.room, sp = r.special && SPECIALS[r.special];
+  if (!sp || (sp.secret && r.status !== "roundEnd")) return "";
+  return `<div class="special"><span class="icon">${sp.icon}</span><span><b>Manche spéciale : ${sp.label}</b><span>${sp.desc}</span></span></div>`;
+}
 function statusLine() {
   const r = S.room;
-  return `<div class="status"><span class="label">Manche <b>${r.manche}</b> / ${r.settings.manches}</span>
+  return `${["roundEnd", "final"].includes(r.status) ? "" : specialBanner()}<div class="status"><span class="label">Manche <b>${r.manche}</b> / ${r.settings.manches}</span>
     <span class="label">Vote <b>${r.cycle}</b>${r.status === "clues" ? ` · Tour <b>${r.tour}</b> / ${r.toursNow || r.settings.tours}` : ""}</span></div>`;
 }
 const currentSpeaker = () => S.room.order[S.room.speaker];
@@ -1104,14 +1148,17 @@ function scoreList() {
 }
 function viewRoundEnd() {
   const r = S.room, last = r.manche >= r.settings.manches;
-  const title = { civils: "Les civils gagnent", imposteurs: "Les imposteurs gagnent", ghost: "Le Fantôme a deviné !" }[r.winner];
+  const title = { civils: "Les civils gagnent", imposteurs: "Les imposteurs gagnent", ghost: "Le Fantôme a deviné !", none: "Il n'y avait pas de Taupe !" }[r.winner];
   return `${bar()}${statusLine()}
   <div class="panel reveal stack"><p class="big win-${r.winner}">${title}</p>${r.lastOut ? `<div class="stack">${outLine(r.lastOut)}</div>` : ""}</div>
+  ${specialBanner()}
+  ${r.special === "traitor" && r.traitor ? `<p class="invite">🗡️ Le Traître était <b class="plain">${esc(nameOf(r.traitor))}${you(r.traitor)}</b>.</p>` : ""}
+  ${r.winner === "none" ? `<p class="small muted">${r.lastOut && !r.lastOut.tie ? `${esc(nameOf(r.lastOut.uid))} a été éliminé·e à tort et perd ${-POINTS.wrongVote * (r.special === "double" ? 2 : 1)} points.` : "Égalité : personne ne perd de points."}</p>` : ""}
   ${voteReveal()}
   ${r.words.custom && r.referee ? `<p class="small muted">Mots écrits par ${esc(nameOf(r.referee))}${you(r.referee)}, qui a arbitré cette manche.</p>` : ""}
   <div class="panel"><h3>Les mots de la manche</h3>
     <div class="words"><div class="c">${wordPic(r.words.civil, r.words.hint, r.settings.theme)}<span class="label">Civils</span><b>${esc(r.words.civil)}</b>${picSource(r.words.civil, r.settings.theme)}</div>
-      <div class="u">${wordPic(r.words.uc, r.words.hint, r.settings.theme)}<span class="label">Taupe</span><b>${esc(r.words.uc)}</b>${picSource(r.words.uc, r.settings.theme)}</div>
+      <div class="u">${wordPic(r.words.uc, r.words.hint, r.settings.theme)}<span class="label">Taupe</span><b>${r.special === "noTaupe" ? "Personne" : esc(r.words.uc)}</b>${picSource(r.words.uc, r.settings.theme)}</div>
       <div class="g"><span class="label">Indice Fantôme</span><b>${esc(r.words.hint)}</b></div></div>
     <ul class="players">${Object.entries(r.roles).map(([id, { role }]) => `<li><span class="name">${esc(nameOf(id))}${you(id)}</span><span class="tag ${role}">${ROLE_LABEL[role]}</span></li>`).join("")}</ul></div>
   <div class="panel"><h3>Scores</h3>${scoreList()}</div>
@@ -1202,6 +1249,7 @@ const ACTIONS = {
   },
   delPair: el => send({ type: "delPair", id: el.dataset.id }),
   mime: () => send({ type: "mime" }),
+  specials: () => send({ type: "specials" }),
   peekStart: () => { S.peek = { step: "pick" }; render(); },
   peekPick: el => { S.peek = { step: "confirm", uid: el.dataset.u }; render(); },
   peekReady: () => { S.peek = { ...S.peek, step: "show", n: Date.now() }; render(); },
@@ -1228,7 +1276,7 @@ setInterval(() => {
   if (left == null) { el.textContent = ""; if (bar) bar.style.width = "100%"; return; }
   const sec = Math.max(0, Math.ceil(left / 1000));
   el.textContent = sec + " s"; el.classList.toggle("low", sec <= 10);
-  if (bar) { bar.style.width = Math.max(0, Math.min(100, left / TURN_MS * 100)) + "%"; bar.classList.toggle("low", sec <= 10); }
+  if (bar) { bar.style.width = Math.max(0, Math.min(100, left / turnMs(S.room) * 100)) + "%"; bar.classList.toggle("low", sec <= 10); }
   // Out of time: send what the player already typed rather than losing it.
   const key = turnKey(S.room), input = document.getElementById("clueInput");
   if (left <= 300 && input && input.value.trim() && S.autoSent !== key) { S.autoSent = key; ACTIONS.clue(); }
