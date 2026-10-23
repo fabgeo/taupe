@@ -196,6 +196,40 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .credits { font-size: .75rem; color: var(--muted); text-align: center; padding-top: 8px; line-height: 1.6; }
 .credits a { color: var(--muted); }
 .src { display: block; font-size: .7rem; color: var(--muted); margin-top: 2px; }
+.chat { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; }
+.chat li { background: var(--bg); border-radius: 10px; padding: 7px 11px; display: flex; flex-direction: column; min-width: 0; }
+.chat li b { font-size: .78rem; color: var(--accent); }
+.chat li.me b { color: var(--civil); }
+.chat li span { overflow-wrap: anywhere; }
+.chat li.empty { color: var(--muted); font-size: .85rem; background: transparent; padding-left: 0; }
+.reacts { display: flex; gap: 6px; flex-wrap: wrap; }
+.reacts button { padding: 6px 10px; font-size: 1.2rem; line-height: 1; background: var(--bg); }
+.fx { position: fixed; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); z-index: 50; pointer-events: none; display: flex; flex-direction: column; align-items: center;
+  animation: floatup 2.6s ease-out forwards; }
+.fx .e { font-size: 2.4rem; line-height: 1; }
+.fx .n { font-size: .72rem; font-weight: 700; background: var(--raise); color: var(--ink); padding: 1px 7px; border-radius: 99px; margin-top: 2px; }
+@keyframes floatup { 0% { transform: translateY(20px) scale(.6); opacity: 0; } 15% { transform: translateY(0) scale(1.1); opacity: 1; } 100% { transform: translateY(-260px) scale(1); opacity: 0; } }
+.vreveal { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.vreveal li { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; background: var(--bg); border-radius: 10px; padding: 8px 12px;
+  animation: dropin .4s ease-out both; }
+.vreveal li span, .vreveal li b { overflow-wrap: anywhere; min-width: 0; }
+.vreveal li b { color: var(--mask); text-align: right; }
+.vreveal .arrow { color: var(--muted); }
+@keyframes dropin { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.pairform { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pairform #pairH, .pairform button { grid-column: 1 / -1; }
+@media (max-width: 420px) { .pairform { grid-template-columns: 1fr; } }
+.toggle { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: left; font-weight: 400; background: var(--bg); }
+.toggle > span { display: flex; flex-direction: column; gap: 2px; }
+.toggle b { font-family: var(--f-display); font-size: .95rem; }
+.toggle > span > span { font-size: .78rem; color: var(--muted); }
+.toggle i { width: 42px; height: 24px; border-radius: 12px; background: var(--line); position: relative; flex: none; }
+.toggle i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--muted); transition: left .15s; }
+.toggle.on { border-color: var(--accent); }
+.toggle.on i { background: rgba(245,184,61,.35); }
+.toggle.on i::after { left: 21px; background: var(--accent); }
+.invite b.plain { font-family: inherit; letter-spacing: 0; }
+@media (prefers-reduced-motion: reduce) { .fx, .vreveal li { animation-duration: .01s; } }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -227,7 +261,13 @@ const THEMES = {
   ["Fraise","Framboise","fruit"],["Citron","Orange","fruit"],["Dragon","Dinosaure","créature"],["Sorcière","Fée","conte"],
   ["Licorne","Pégase","créature"],["Hiver","Automne","saison"],["Matin","Soir","moment"],["Bougie","Lampe","lumière"],
   ["Parapluie","Imperméable","pluie"],["Écharpe","Bonnet","hiver"],["Baskets","Bottes","chaussures"],["Coiffeur","Barbier","métier"],
-  ["Astronaute","Pilote","métier"],["Fusée","Satellite","espace"],["Étoile","Planète","espace"],["Popcorn","Chips","apéro"]
+  ["Astronaute","Pilote","métier"],["Fusée","Satellite","espace"],["Étoile","Planète","espace"],["Popcorn","Chips","apéro"],
+    ["Coussin","Oreiller","maison"],["Miel","Confiture","tartine"],["Tournevis","Marteau","outil"],["Savon","Gel douche","salle de bain"],
+    ["Brosse à dents","Dentifrice","salle de bain"],["Ascenseur","Escalator","bâtiment"],["Taxi","Uber","transport"],["Boxe","Karaté","sport"],
+    ["Hamster","Cochon d'Inde","animal"],["Corbeau","Pie","oiseau"],["Pingouin","Manchot","animal"],["Crocodile","Alligator","animal"],
+    ["Cerise","Prune","fruit"],["Pastèque","Melon","fruit"],["Carotte","Navet","légume"],["Couscous","Paella","plat"],
+    ["Kebab","Tacos","fast-food"],["Jean","Jogging","vêtement"],["Chemise","Polo","vêtement"],["Pharaon","Momie","Égypte"],
+    ["Bowling","Billard","loisir"],["Frigo","Congélateur","cuisine"]
 ] },
   border: { label: "Border", desc: "Soirées, couple, limite", pairs: [
     ["Tinder","Bumble","appli"],["Ex","Plan cul","cœur"],["Vodka","Tequila","alcool"],["Gueule de bois","Mal de crâne","lendemain"],
@@ -243,11 +283,22 @@ const THEMES = {
     ["Enterrement","Crémation","mort"],["Cercueil","Urne","mort"],["Testament","Héritage","notaire"],["Croque-mort","Médecin légiste","métier"],
     ["Cimetière","Morgue","mort"],["Corbillard","Ambulance","véhicule"],["Pierre tombale","Épitaphe","mort"],["Assurance vie","Assurance obsèques","argent"],
     ["Scène de crime","Autopsie","enquête"],["Poison","Arsenic","meurtre"],["Tueur en série","Cannibale","fait divers"],["Guillotine","Chaise électrique","exécution"],
-    ["Faire-part de décès","Avis de décès","courrier"],["Dernier repas","Dernière cigarette","fin"],["Veuve noire","Mante religieuse","mari"],["Exorcisme","Possession","enfer"]
+    ["Faire-part de décès","Avis de décès","courrier"],["Dernier repas","Dernière cigarette","fin"],["Veuve noire","Mante religieuse","mari"],["Exorcisme","Possession","enfer"],
+    ["Rhum","Whisky","alcool"],["Champagne","Prosecco","bulles"],["Mojito","Caïpirinha","cocktail"],["Apéro","Happy hour","soirée"],
+    ["Alcootest","Éthylotest","police"],["Coma éthylique","Black-out","soirée"],["Cuite","Murge","alcool"],["Sextoy","Vibromasseur","tiroir"],
+    ["Lubrifiant","Huile de massage","tiroir"],["Kamasutra","Cinquante nuances de Grey","livre"],["Missionnaire","Levrette","position"],["Strip-club","Peep-show","nuit"],
+    ["Escort","Gigolo","métier"],["Crush","Coup de foudre","cœur"],["Ex toxique","Manipulateur","couple"],["Tromper","Mentir","couple"],
+    ["Demande en mariage","Bague de fiançailles","couple"],["Lune de miel","Voyage de noces","couple"],["Pension alimentaire","Garde alternée","divorce"],["Amende","PV","police"],
+    ["Radar","Flash","route"],["Casier judiciaire","Bracelet électronique","justice"],["Braquage","Cambriolage","crime"],["Mafia","Cartel","crime"],
+    ["Pot-de-vin","Corruption","argent"],["Dealer","Revendeur","rue"],["Squelette","Crâne","os"],["Embaumement","Taxidermie","conservation"],
+    ["Tueur à gages","Sniper","meurtre"],["Alibi","Témoin","enquête"],["Médium","Voyante","au-delà"],["Ouija","Spiritisme","au-delà"],
+    ["Maison hantée","Château hanté","au-delà"],["Apocalypse","Fin du monde","fin"],["Crise de la quarantaine","Démon de midi","âge"],["Maison de retraite","EHPAD","vieillesse"],
+    ["Dentier","Appareil auditif","vieillesse"],["Viagra","Cialis","pharmacie"],["Calvitie","Perruque","cheveux"],["Botox","Lifting","chirurgie"],
+    ["Diarrhée","Gastro","malade"],["Hémorroïdes","Constipation","malade"],["Puberté","Ménopause","âge"],["Gueule d'ange","Faux cul","défaut"]
   ] },
   netflix: { label: "Netflix", desc: "Manga, Disney, séries, films", pairs: [
     ["Naruto","Sasuke","manga"],["Goku","Vegeta","manga"],["Luffy","Zoro","manga"],["Tanjiro","Nezuko","manga"],
-    ["Eren","Livaï","manga"],["Light Yagami","L","manga"],["One Piece","Naruto","anime"],["Pikachu","Évoli","Pokémon"],
+    ["Eren","Livaï","manga"],["Light Yagami","L","manga"],["One Piece","Fairy Tail","anime"],["Pikachu","Évoli","Pokémon"],
     ["Totoro","Chihiro","Ghibli"],["Elsa","Raiponce","Disney"],["Simba","Nala","Disney"],["Mickey","Donald","Disney"],
     ["Ariel","Vaiana","Disney"],["Stitch","Olaf","Disney"],["Le Roi Lion","Le Livre de la jungle","Disney"],["Woody","Buzz l'Éclair","Pixar"],
     ["Shrek","Fiona","film d'animation"],["Gru","Minion","film d'animation"],["Harry Potter","Ron Weasley","sorcier"],["Dark Vador","Kylo Ren","Star Wars"],
@@ -255,7 +306,22 @@ const THEMES = {
     ["Joker","Harley Quinn","méchant"],["Jack Sparrow","Barbe Noire","pirate"],["Gollum","Dobby","créature"],["Titanic","Pearl Harbor","film"],
     ["Stranger Things","Dark","série"],["La Casa de Papel","Lupin","série"],["Squid Game","Alice in Borderland","série"],["Mercredi","Morticia","famille Addams"],
     ["Le Professeur","Berlin","braquage"],["Walter White","Jesse Pinkman","série"],["Friends","How I Met Your Mother","sitcom"],["Bob l'éponge","Patrick","dessin animé"],
-    ["Homer Simpson","Peter Griffin","dessin animé"],["Peaky Blinders","Narcos","série"],["Bridgerton","Gossip Girl","série"],["Eleven","Max","Stranger Things"]
+    ["Homer Simpson","Peter Griffin","dessin animé"],["Peaky Blinders","Narcos","série"],["Bridgerton","Gossip Girl","série"],["Eleven","Max","Stranger Things"],
+    ["Kakashi","Jiraya","manga"],["Itachi","Madara","manga"],["Nami","Robin","manga"],["Sanji","Usopp","manga"],
+    ["Zenitsu","Inosuke","manga"],["Mikasa","Armin","manga"],["Gon","Kirua","manga"],["Saitama","Genos","manga"],
+    ["Deku","Bakugo","manga"],["Gojo","Sukuna","manga"],["Dragon Ball","Hunter x Hunter","anime"],["Death Note","Code Geass","anime"],
+    ["Demon Slayer","Jujutsu Kaisen","anime"],["L'Attaque des Titans","Tokyo Ghoul","anime"],["Dracaufeu","Tortank","Pokémon"],["Sacha","Pierre","Pokémon"],
+    ["Aladdin","Jasmine","Disney"],["Mulan","Pocahontas","Disney"],["Blanche-Neige","Cendrillon","Disney"],["Jafar","Scar","méchant"],
+    ["Ursula","Maléfique","méchant"],["Nemo","Dory","Pixar"],["Flash McQueen","Martin","Pixar"],["WALL-E","EVE","Pixar"],
+    ["Monstres et Cie","Vice-Versa","Pixar"],["Ratatouille","Là-haut","Pixar"],["Timon","Pumbaa","Disney"],["Winnie l'ourson","Porcinet","Disney"],
+    ["Peter Pan","Capitaine Crochet","Disney"],["Game of Thrones","House of the Dragon","série"],["Jon Snow","Daenerys","Game of Thrones"],["Breaking Bad","Better Call Saul","série"],
+    ["The Walking Dead","The Last of Us","série"],["Sherlock","Dr House","série"],["Grey's Anatomy","Urgences","série"],["Prison Break","Orange Is the New Black","série"],
+    ["Euphoria","Skins","série"],["Élite","Riverdale","série"],["The Office","Brooklyn Nine-Nine","sitcom"],["The Boys","Invincible","super-héros"],
+    ["Rick","Morty","dessin animé"],["Tony Montana","Vito Corleone","gangster"],["Rocky","Creed","boxe"],["Terminator","RoboCop","robot"],
+    ["Indiana Jones","Lara Croft","aventurier"],["James Bond","Ethan Hunt","espion"],["Matrix","Inception","film"],["Wolverine","Magneto","X-Men"],
+    ["Black Panther","Black Widow","Marvel"],["Thanos","Ultron","méchant"],["Voldemort","Sauron","méchant"],["Hermione","Ginny","sorcier"],
+    ["Dumbledore","Gandalf","sorcier"],["Yoda","Obi-Wan","Star Wars"],["Chewbacca","R2-D2","Star Wars"],["Astérix","Obélix","BD"],
+    ["Tintin","Spirou","BD"],["Tom","Jerry","dessin animé"],["Bugs Bunny","Daffy Duck","dessin animé"],["Shin-chan","Doraemon","anime"]
   ] }
 };
 
@@ -269,15 +335,26 @@ const WIKI_TITLE = { "Mercredi": "Mercredi Addams", "Morticia": "Morticia Addams
   "Minion": "Les Minions", "Stitch": "Stitch (Disney)", "Olaf": "Olaf (La Reine des neiges)", "Elsa": "Elsa (La Reine des neiges)",
   "Ariel": "Ariel (Disney)", "Vaiana": "Vaiana, la légende du bout du monde", "Simba": "Simba", "Woody": "Woody (Toy Story)", "Buzz l'Éclair": "Buzz l'Éclair",
   "Livaï": "Livaï Ackerman", "Eren": "Eren Jäger", "Tanjiro": "Tanjirō Kamado", "Nezuko": "Nezuko Kamado", "Chihiro": "Le Voyage de Chihiro",
-  "Totoro": "Mon voisin Totoro", "Le Roi Lion": "Le Roi lion", "Walter White": "Walter White (Breaking Bad)", "Jesse Pinkman": "Breaking Bad", "Dark": "Dark (série télévisée)" };
+  "Totoro": "Mon voisin Totoro", "Le Roi Lion": "Le Roi lion", "Walter White": "Walter White (Breaking Bad)", "Jesse Pinkman": "Breaking Bad", "Dark": "Dark (série télévisée)",
+  "Martin": "Martin (Cars)", "Sacha": "Sacha (Pokémon)", "Pierre": "Pierre (Pokémon)", "Tom": "Tom et Jerry", "Jerry": "Tom et Jerry",
+  "Rick": "Rick et Morty", "Morty": "Rick et Morty", "EVE": "WALL-E", "Gon": "Gon Freecss", "Kirua": "Kirua Zoldik", "Deku": "Izuku Midoriya",
+  "Bakugo": "Katsuki Bakugo", "Gojo": "Satoru Gojo", "Sukuna": "Jujutsu Kaisen", "Nami": "Nami (One Piece)", "Robin": "Nico Robin",
+  "Sanji": "Sanji (One Piece)", "Élite": "Élite (série télévisée)", "Urgences": "Urgences (série télévisée)", "Sherlock": "Sherlock (série télévisée)",
+  "Rocky": "Rocky (film)", "Matrix": "Matrix (film)", "Tintin": "Tintin (personnage)", "Spirou": "Spirou (personnage)", "Ratatouille": "Ratatouille (film)",
+  "Là-haut": "Là-haut (film, 2009)", "Nemo": "Le Monde de Nemo", "Dory": "Le Monde de Dory", "Jafar": "Jafar (Disney)", "Scar": "Scar (Disney)",
+  "Ursula": "Ursula (Disney)", "Timon": "Timon et Pumbaa", "Pumbaa": "Timon et Pumbaa", "Itachi": "Itachi Uchiwa", "Madara": "Madara Uchiwa",
+  "Kakashi": "Kakashi Hatake", "Mikasa": "Mikasa Ackerman", "Armin": "Armin Arlert", "Saitama": "One-Punch Man", "Genos": "One-Punch Man" };
 const HINT_EMOJI = { appli: "📱", "téléphone": "📱", "réseau": "📲", site: "🔞", "cœur": "💘", relation: "💋", couple: "💔", "séduction": "😏", rencontre: "☕",
   "défaut": "😤", famille: "👪", alcool: "🍸", lendemain: "🤕", verre: "🥃", "soirée": "🪩", "fumée": "💨", peau: "💋", danse: "💃", accessoire: "⛓️",
   "sous-vêtement": "👙", tenue: "👙", corps: "🍑", jeu: "🎲", nuit: "🌙", chambre: "🛏️", chaleur: "♨️", "précaution": "🛡️", pharmacie: "💊",
   "médecin": "🩺", poils: "🪒", bruit: "💨", police: "🚓", geste: "🖕", mort: "💀", notaire: "📜", "métier": "⚰️", "véhicule": "🚑", argent: "💰",
-  "enquête": "🔍", meurtre: "☠️", "fait divers": "🔪", "exécution": "⚖️", courrier: "✉️", fin: "🕯️", mari: "🕷️", enfer: "😈" };
+  "enquête": "🔍", meurtre: "☠️", "fait divers": "🔪", "exécution": "⚖️", courrier: "✉️", fin: "🕯️", mari: "🕷️", enfer: "😈", site: "🔞",
+  bulles: "🍾", cocktail: "🍹", tiroir: "🤫", livre: "📕", position: "🛏️", "métier ": "💼", divorce: "💔", route: "🚗", justice: "⚖️", crime: "💰",
+  rue: "🌃", os: "💀", conservation: "🧪", "au-delà": "👻", "âge": "🎂", vieillesse: "👴", cheveux: "💇", chirurgie: "💉", malade: "🤢" };
 const imgCache = {}, imgPage = {};
 const picSource = (word, theme) => theme !== "border" && imgPage[word] ? `<a class="src" href="${esc(imgPage[word])}" target="_blank" rel="noopener">Image : Wikipédia</a>` : "";
 function wordPic(word, hint, theme) {
+  if (S.room?.words?.custom) return `<span class="pic emoji" aria-hidden="true">✍️</span>`;
   if (theme === "border") return `<span class="pic emoji" aria-hidden="true">${HINT_EMOJI[hint] || "🃏"}</span>`;
   if (!(word in imgCache)) {
     imgCache[word] = "";
@@ -320,8 +397,21 @@ function startProblem(G) {
   if (n - imp <= imp) return `Trop d'imposteurs pour ${n} joueurs : il faut plus de civils que de Taupes et de Fantômes.`;
   return "";
 }
+// A player's own pair: they know both words, so they sit out (and referee) the manche that uses it.
+function pickCustom(G) {
+  const unused = (G.custom || []).filter(c => !c.used);
+  if (!unused.length) return null;
+  const remaining = Math.max(1, G.settings.manches - G.manche);
+  if (Math.random() > Math.min(1, unused.length / remaining)) return null;
+  for (const c of shuffle(unused)) {
+    const others = listPlayers(G).filter(p => p.uid !== c.by).length, s = G.settings, imp = s.uc + s.ghost;
+    if (others >= 3 && others - imp > imp) return c;
+  }
+  return null;
+}
 function startManche(G, local) {
-  const s = G.settings, ids = shuffle(listPlayers(G).map(p => p.uid));
+  const s = G.settings, custom = local ? null : pickCustom(G);
+  const ids = shuffle(listPlayers(G).map(p => p.uid).filter(id => !custom || id !== custom.by));
   const th = THEMES[s.theme] ? s.theme : "classique", pairs = THEMES[th].pairs;
   G.usedPairs = (G.usedPairs || []).filter(k => typeof k === "string");
   let free = pairs.map((_, i) => i).filter(i => !G.usedPairs.includes(th + ":" + i));
@@ -329,6 +419,7 @@ function startManche(G, local) {
   const pi = free[Math.floor(Math.random() * free.length)];
   G.usedPairs.push(th + ":" + pi);
   let [a, b, hint] = pairs[pi];
+  if (custom) { G.usedPairs.pop(); custom.used = true; [a, b, hint] = [custom.a, custom.b, custom.hint || "mot perso"]; }
   if (Math.random() < .5) [a, b] = [b, a];
   const roles = {};
   ids.forEach((id, i) => { roles[id] = { role: i < s.uc ? "uc" : i < s.uc + s.ghost ? "ghost" : "civil" }; });
@@ -336,7 +427,9 @@ function startManche(G, local) {
   G.lastFirst = order[0];
   ids.forEach(id => { if (G.scores[id] == null) G.scores[id] = 0; });
   Object.assign(G, { status: local ? "deal" : "clues", deal: 0, manche: G.manche + 1, cycle: 1, tour: 1, speaker: 0, toursNow: s.tours, turnStart: Date.now(),
-    order, alive: order.slice(), inRound: ids, roles, words: { civil: a, uc: b, hint }, lastOut: null, winner: null });
+    order, alive: order.slice(), inRound: ids, roles, words: { civil: a, uc: b, hint, custom: !!custom }, lastOut: null, winner: null,
+    referee: custom ? custom.by : null, chat: [], lastVotes: null,
+    mime: local && s.mime ? (shuffle(ids.filter(id => roles[id].role !== "ghost"))[0] || null) : null });
 }
 const turnKey = r => `${r.manche}-${r.cycle}-${r.tour}-${r.speaker}`;
 function turnLeft() {
@@ -389,6 +482,7 @@ function resolveVotes(G) {
     .forEach(v => { if (G.alive.includes(v.target)) tally[v.target] = (tally[v.target] || 0) + 1; });
   const max = Math.max(0, ...Object.values(tally));
   const top = Object.keys(tally).filter(k => tally[k] === max);
+  G.lastVotes = { manche: G.manche, cycle: G.cycle, list: G.votes.filter(v => v.manche === G.manche && v.cycle === G.cycle && G.alive.includes(v.uid)).map(v => ({ uid: v.uid, target: v.target })) };
   if (top.length !== 1) { G.status = "result"; G.lastOut = { tie: true }; return; }
   eliminate(G, top[0]);
 }
@@ -457,7 +551,7 @@ function apply(G, actor, a) {
     case "continue":
       if (!host || st !== "result") return "";
       G.order = speakingOrder(G.alive, G.roles, G.lastFirst); G.lastFirst = G.order[0];
-      Object.assign(G, { status: "clues", cycle: G.cycle + 1, tour: 1, speaker: 0, toursNow: 1, turnStart: Date.now() });
+      Object.assign(G, { status: "clues", cycle: G.cycle + 1, tour: 1, speaker: 0, toursNow: 1, turnStart: Date.now(), lastVotes: null });
       return "";
     case "toVote": if (host && st === "clues") Object.assign(G, { status: "vote", speaker: 0 }); return "";
     case "pass": if (st === "clues" && G.order[G.speaker] === actor) advance(G); return "";
@@ -466,6 +560,23 @@ function apply(G, actor, a) {
       if (!host || st !== "roundEnd") return "";
       if (G.manche >= G.settings.manches) G.status = "final"; else startManche(G, !!a.local);
       return "";
+    case "chat": {
+      const text = String(a.text ?? "").trim().slice(0, 120);
+      if (!text || !G.players[actor] || st === "lobby" || st === "final") return "";
+      if (st !== "roundEnd" && G.inRound.includes(actor) && !G.alive.includes(actor)) return "Les éliminés ne parlent plus jusqu'à la fin de la manche.";
+      G.chat = (G.chat || []).concat({ uid: actor, text, at: Date.now() }).slice(-60);
+      return "";
+    }
+    case "addPair": {
+      if (!G.players[actor] || !["lobby", "roundEnd"].includes(st)) return "";
+      const w1 = String(a.a ?? "").trim().slice(0, 30), w2 = String(a.b ?? "").trim().slice(0, 30), h = String(a.hint ?? "").trim().slice(0, 30);
+      if (!w1 || !w2) return "Écris les deux mots.";
+      if (norm(w1) === norm(w2)) return "Les deux mots doivent être différents.";
+      G.custom = (G.custom || []).concat({ id: rid(), by: actor, a: w1, b: w2, hint: h, used: false }).slice(-40);
+      return "";
+    }
+    case "delPair": G.custom = (G.custom || []).filter(c => !(c.id === a.id && (c.by === actor || host) && !c.used)); return "";
+    case "mime": if (host && st === "lobby") G.settings.mime = !G.settings.mime; return "";
     case "newGame":
       if (!host) return "";
       Object.assign(G, { status: "lobby", manche: 0, scores: {}, clues: [], votes: [], inRound: [], order: [], alive: [],
@@ -477,6 +588,9 @@ function apply(G, actor, a) {
 // What one player is allowed to see: their own role and word, plus roles already revealed.
 function viewFor(G, uid) {
   const v = clone(G);
+  v.myCustom = (G.custom || []).filter(c => c.by === uid && !c.used);
+  v.customCount = (G.custom || []).filter(c => !c.used).length;
+  delete v.custom;
   if (G.roles && !["roundEnd", "final"].includes(G.status)) {
     v.roles = {};
     for (const id in G.roles) if (id === uid || !G.alive.includes(id)) v.roles[id] = G.roles[id];
@@ -582,6 +696,7 @@ async function hostRoom(name, resume) {
   apply(G, S.uid, { type: "join", name });
   lastSent.clear();
   wire(c, (t, m) => {
+    if (t === topic("fx")) { showReaction(m); return; }
     if (!m || !G || t !== topic("act")) return;
     const uid = String(m.uid || "").slice(0, 40);
     if (!uid || uid === G.host) return;
@@ -589,7 +704,7 @@ async function hostRoom(name, resume) {
     else if (m.t === "bye") { if (G.players[uid]) G.players[uid].online = false; }
     else if (m.t === "act" && G.players[uid]) {
       const a = m.a || {};
-      if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal", "toVote", "theme"].includes(a.type)) return;
+      if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal", "toVote", "theme", "mime"].includes(a.type)) return;
       const e = apply(G, uid, a);
       if (e) pub(topic("p", uid), { t: "err", m: e }, false);
       if (a.type === "leave") { lastSent.delete(uid); pub(topic("p", uid), null, true); }
@@ -599,7 +714,7 @@ async function hostRoom(name, resume) {
     persist(); broadcast(); refresh();
   });
   const announce = () => { pub(topic("host"), { on: true, at: Date.now() }, true); lastSent.clear(); broadcast(); };
-  c.subscribe(topic("act"), { qos: 1 }, announce);
+  c.subscribe([topic("act"), topic("fx")], { qos: 1 }, announce);
   // Re-announce regularly: after a crash, the old connection's "gone" notice can arrive late and must not win.
   const beat = setInterval(() => { if (S.client !== c) clearInterval(beat); else if (c.connected) pub(topic("host"), { on: true, at: Date.now() }, true); }, 10000);
   // Turn timer: tell everyone the time left, and pass the turn of a player who runs out of time.
@@ -615,7 +730,7 @@ async function hostRoom(name, resume) {
       c.publish(topic("tick"), JSON.stringify({ key: turnKey(G), left: Math.max(0, TURN_MS - (Date.now() - G.turnStart)) }), { qos: 0 });
     }
   }, 500);
-  c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe(topic("act"), { qos: 1 }, announce); render(); } });
+  c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe([topic("act"), topic("fx")], { qos: 1 }, announce); render(); } });
   S.net = "ok"; keepAwake(); persist(); refresh();
 }
 function kick(uid) {
@@ -652,6 +767,7 @@ async function joinRoom(code, name) {
   }
   const c = found;
   wire(c, (t, m) => {
+    if (t === topic("fx")) { showReaction(m); return; }
     if (t === topic("tick")) { if (m && m.key) S.deadline = { key: m.key, at: Date.now() + (+m.left || 0) }; return; }
     if (t === topic("host")) {
       if (!m || !m.on) { S.net = "hostaway"; render(); }
@@ -664,8 +780,8 @@ async function joinRoom(code, name) {
     else if (m.t === "kicked") { leave(); S.err = "L'hôte t'a retiré·e du salon."; render(); }
   });
   const hello = () => pub(topic("act"), { t: "hello", uid: S.uid, name }, false);
-  c.subscribe([topic("p", S.uid), topic("tick")], { qos: 1 }, hello);
-  c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe([topic("p", S.uid), topic("host"), topic("tick")], { qos: 1 }, hello); render(); } });
+  c.subscribe([topic("p", S.uid), topic("tick"), topic("fx")], { qos: 1 }, hello);
+  c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe([topic("p", S.uid), topic("host"), topic("tick"), topic("fx")], { qos: 1 }, hello); render(); } });
   S.net = "ok"; keepAwake(); render();
 }
 function closeNet() {
@@ -748,6 +864,21 @@ function stepper(key, label, hint) {
       <span class="val">${v}</span>${h ? `<button data-a="set" data-k="${key}" data-d="1" aria-label="Plus">+</button>` : ""}</div>
     <span class="hint">${hint}</span></div>`;
 }
+function customPanel() {
+  if (isLocal()) return "";
+  const r = S.room, mine = r.myCustom || [];
+  return `<div class="panel"><div class="status"><h2>Vos mots perso</h2><span class="label"><b>${r.customCount || 0}</b> en réserve</span></div>
+    <p class="small muted">Ajoute en secret une paire de mots proches (blague entre vous, prénom, souvenir…). Personne ne la voit. Elle sort pendant la partie, et comme tu connais les deux mots, tu arbitres cette manche-là. Les paires disparaissent quand le salon ferme.</p>
+    <div class="pairform">
+      <input type="text" id="pairA" maxlength="30" placeholder="Mot 1 (ex. Kevin)" autocomplete="off">
+      <input type="text" id="pairB" maxlength="30" placeholder="Mot 2, proche (ex. Jordan)" autocomplete="off">
+      <input type="text" id="pairH" maxlength="30" placeholder="Indice Fantôme (facultatif)" data-enter="addPair" autocomplete="off">
+      <button data-a="addPair">Ajouter ma paire</button>
+    </div>
+    ${mine.length ? `<ul class="players">${mine.map(c => `<li><span class="name">${esc(c.a)} / ${esc(c.b)}${c.hint ? ` <span class="muted small">(${esc(c.hint)})</span>` : ""}</span>
+      <button class="ghost x" data-a="delPair" data-id="${esc(c.id)}">Retirer</button></li>`).join("")}</ul>` : ""}
+    ${errLine()}</div>`;
+}
 function settingsPanel() {
   const h = isHost(), prob = startProblem(S.room);
   const cur = S.room.settings.theme || "classique";
@@ -756,6 +887,8 @@ function settingsPanel() {
       <div class="themes" role="radiogroup" aria-label="Thème des mots">${Object.entries(THEMES).map(([k, t]) =>
         `<button class="theme ${k === cur ? "on" : ""}" role="radio" aria-checked="${k === cur}" data-a="theme" data-v="${k}" ${h ? "" : "disabled"}>
           <b>${t.label}</b><span>${t.desc}</span></button>`).join("")}</div></div>
+    ${isLocal() ? `<button class="toggle ${S.room.settings.mime ? "on" : ""}" data-a="mime" role="switch" aria-checked="${!!S.room.settings.mime}">
+      <span><b>Mister Mime</b><span>À chaque manche, un joueur tiré au sort doit mimer ses indices, sans parler.</span></span><i></i></button>` : ""}
     <div class="settings">
       ${stepper("uc", "Taupes", "Mot proche mais différent")}
       ${stepper("ghost", "Fantômes", "Aucun mot, un indice large")}
@@ -791,11 +924,12 @@ function viewLobby() {
       <span class="name">${esc(p.name)}${you(p.uid)}</span>
       ${p.uid === S.room.host ? `<span class="tag host">Hôte</span>` : ""}
       ${isHost() && p.uid !== S.uid ? `<button class="ghost x" data-a="kick" data-u="${esc(p.uid)}">Retirer</button>` : ""}</li>`).join("")}</ul></div>
+  ${customPanel()}
   ${settingsPanel()}`;
 }
 function slip(uid, key) {
   const r = S.room, mine = r.roles?.[uid];
-  if (!mine) return `<p class="small muted">Partie en cours. Tu joueras à la manche suivante.</p>`;
+  if (!mine) return r.referee === uid ? `<p class="invite">Les mots de cette manche viennent de toi : tu arbitres et tu regardes. Tu rejoues à la manche suivante.</p>` : `<p class="small muted">Partie en cours. Tu joueras à la manche suivante.</p>`;
   if (S.revealKey !== key) { S.revealKey = key; S.revealed = false; }
   const isGhost = mine.role === "ghost";
   const who = isLocal() ? `Mot de ${esc(nameOf(uid))}` : "Ton mot";
@@ -812,6 +946,41 @@ function statusLine() {
     <span class="label">Vote <b>${r.cycle}</b>${r.status === "clues" ? ` · Tour <b>${r.tour}</b> / ${r.toursNow || r.settings.tours}` : ""}</span></div>`;
 }
 const currentSpeaker = () => S.room.order[S.room.speaker];
+const REACTIONS = ["😂", "🤨", "😱", "🫵", "🤫", "👀"];
+let lastReact = 0;
+function react(e) {
+  if (!REACTIONS.includes(e) || Date.now() - lastReact < 700 || !S.client?.connected) return;
+  lastReact = Date.now();
+  S.client.publish(topic("fx"), JSON.stringify({ uid: S.uid, e }), { qos: 0 });
+}
+function showReaction(m) {
+  if (!m || !REACTIONS.includes(m.e) || !S.room) return;
+  const el = document.createElement("div");
+  el.className = "fx";
+  el.style.left = (12 + Math.random() * 70) + "%";
+  el.innerHTML = `<span class="e">${m.e}</span><span class="n">${esc(nameOf(m.uid))}</span>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
+}
+const reactBar = () => isLocal() ? "" : `<div class="reacts" aria-label="Réactions">${REACTIONS.map(e => `<button data-a="react" data-e="${e}" aria-label="Réagir ${e}">${e}</button>`).join("")}</div>`;
+function chatPanel() {
+  if (isLocal()) return "";
+  const r = S.room, msgs = r.chat || [];
+  const muted = r.status !== "roundEnd" && (r.inRound || []).includes(S.uid) && !r.alive.includes(S.uid);
+  return `<div class="panel"><div class="status"><h3>Débat</h3><span class="label">Accuse, défends-toi, bluffe</span></div>
+    <ul class="chat" id="chatList">${msgs.length ? msgs.map(m => `<li class="${m.uid === S.uid ? "me" : ""}"><b>${esc(nameOf(m.uid))}</b><span>${esc(m.text)}</span></li>`).join("")
+      : `<li class="empty">Aucun message pour l'instant.</li>`}</ul>
+    ${muted ? `<p class="small muted">Tu es éliminé·e : tu ne peux plus écrire jusqu'à la fin de la manche.</p>`
+      : `<div class="row"><input type="text" id="chatInput" class="grow" maxlength="120" placeholder="Écris un message…" data-enter="chat" autocomplete="off">
+      <button data-a="chat">Envoyer</button></div>`}
+    ${reactBar()}</div>`;
+}
+function voteReveal() {
+  const r = S.room, lv = r.lastVotes;
+  if (!lv || lv.manche !== r.manche || lv.cycle !== r.cycle || !lv.list.length) return "";
+  return `<div class="panel"><h3>Qui a voté contre qui</h3>
+    <ul class="vreveal">${lv.list.map((v, i) => `<li style="animation-delay:${(i * .45).toFixed(2)}s"><span>${esc(nameOf(v.uid))}${you(v.uid)}</span><span class="arrow">→</span><b>${esc(nameOf(v.target))}${you(v.target)}</b></li>`).join("")}</ul></div>`;
+}
 const wordsPanel = () => isLocal() ? "" : `<div class="panel"><h3>Les mots donnés</h3>${board()}</div>`;
 function board() {
   const r = S.room;
@@ -843,7 +1012,8 @@ function viewClues() {
   if (isLocal()) return `${bar()}${statusLine()}
   <div class="panel"><h2>Indices à l'oral</h2>
     <p class="small muted">Chacun dit un mot en rapport avec le sien, dans cet ordre${(r.toursNow || r.settings.tours) > 1 ? `, ${r.toursNow || r.settings.tours} tours de suite` : ""}. Puis passez au vote.</p>
-    <ol class="order">${r.order.map(id => `<li>${esc(nameOf(id))}</li>`).join("")}</ol>
+    ${r.mime && r.alive.includes(r.mime) ? `<p class="invite">🤐 <b class="plain">${esc(nameOf(r.mime))}</b> est le Mister Mime : ses indices se font uniquement par gestes, sans un mot.</p>` : ""}
+    <ol class="order">${r.order.map(id => `<li>${esc(nameOf(id))}${id === r.mime ? " 🤐" : ""}</li>`).join("")}</ol>
     <button class="primary" data-a="toVote">Passer au vote</button>
     <button class="ghost" data-a="peekStart">Revoir mon mot</button></div>`;
   return `${bar()}${statusLine()}${mySlip()}
@@ -856,7 +1026,8 @@ function viewClues() {
     ${board()}
     ${isHost() ? `<div class="row">${mine ? "" : `<button class="ghost grow" data-a="skip">Passer ${esc(nameOf(sp))}</button>`}
       <button class="ghost grow" data-a="toVote">Aller directement au vote</button></div>` : ""}
-    ${errLine()}</div>`;
+    ${errLine()}</div>
+  ${chatPanel()}`;
 }
 function viewVote() {
   const r = S.room;
@@ -877,6 +1048,7 @@ function viewVote() {
       <span>${esc(nameOf(id))}</span><span class="n">${done.has(id) ? "a voté" : ""}</span></button>`).join("")}</div>
     ${isHost() ? `<button class="ghost" data-a="resolve" ${vs.length ? "" : "disabled"}>Dépouiller les votes maintenant</button>` : ""}
     ${errLine()}</div>
+  ${chatPanel()}
   ${wordsPanel()}`;
 }
 function outLine(lo) {
@@ -904,7 +1076,9 @@ function viewPeek() {
 function viewResult() {
   return `${bar()}${statusLine()}${mySlip()}
   <div class="panel reveal stack">${outLine(S.room.lastOut)}</div>
+  ${voteReveal()}
   ${isHost() ? `<button class="primary" data-a="continue">Tour de parole suivant</button>` : `<p class="small muted">L'hôte relance la suite…</p>`}
+  ${chatPanel()}
   ${isLocal() ? `<button class="ghost" data-a="peekStart">Revoir mon mot</button>` : ""}
   ${wordsPanel()}`;
 }
@@ -918,6 +1092,8 @@ function viewGhostGuess() {
       <button class="primary" data-a="guess">Valider</button></div>`
       : `<p class="muted">Le Fantôme tente de deviner le mot des civils…</p>`}
     ${errLine()}</div>
+  ${voteReveal()}
+  ${chatPanel()}
   ${wordsPanel()}`;
 }
 function scoreList() {
@@ -930,12 +1106,16 @@ function viewRoundEnd() {
   const title = { civils: "Les civils gagnent", imposteurs: "Les imposteurs gagnent", ghost: "Le Fantôme a deviné !" }[r.winner];
   return `${bar()}${statusLine()}
   <div class="panel reveal stack"><p class="big win-${r.winner}">${title}</p>${r.lastOut ? `<div class="stack">${outLine(r.lastOut)}</div>` : ""}</div>
+  ${voteReveal()}
+  ${r.words.custom && r.referee ? `<p class="small muted">Mots écrits par ${esc(nameOf(r.referee))}${you(r.referee)}, qui a arbitré cette manche.</p>` : ""}
   <div class="panel"><h3>Les mots de la manche</h3>
     <div class="words"><div class="c">${wordPic(r.words.civil, r.words.hint, r.settings.theme)}<span class="label">Civils</span><b>${esc(r.words.civil)}</b>${picSource(r.words.civil, r.settings.theme)}</div>
       <div class="u">${wordPic(r.words.uc, r.words.hint, r.settings.theme)}<span class="label">Taupe</span><b>${esc(r.words.uc)}</b>${picSource(r.words.uc, r.settings.theme)}</div>
       <div class="g"><span class="label">Indice Fantôme</span><b>${esc(r.words.hint)}</b></div></div>
     <ul class="players">${Object.entries(r.roles).map(([id, { role }]) => `<li><span class="name">${esc(nameOf(id))}${you(id)}</span><span class="tag ${role}">${ROLE_LABEL[role]}</span></li>`).join("")}</ul></div>
   <div class="panel"><h3>Scores</h3>${scoreList()}</div>
+  ${chatPanel()}
+  ${customPanel()}
   ${isHost() ? `<button class="primary" data-a="next">${last ? "Voir le classement final" : "Manche suivante"}</button>` : `<p class="small muted">L'hôte lance la suite…</p>`}
   ${wordsPanel()}`;
 }
@@ -950,7 +1130,7 @@ function viewFinal() {
 
 let lastScreen = "";
 function render() {
-  const keep = ["pseudo", "joinCode", "clueInput", "guessInput", "newPlayer"].map(id => {
+  const keep = ["pseudo", "joinCode", "clueInput", "guessInput", "newPlayer", "chatInput", "pairA", "pairB", "pairH"].map(id => {
     const el = document.getElementById(id); return el ? [id, el.value, document.activeElement === el, el.selectionStart] : null;
   }).filter(Boolean);
   let html, screen;
@@ -968,7 +1148,9 @@ function render() {
     if (S.peek) screen = "peek" + S.peek.step;
     html = S.peek ? viewPeek() : ({ lobby: viewLobby, deal: viewDeal, clues: viewClues, vote: viewVote, result: viewResult, ghostGuess: viewGhostGuess, roundEnd: viewRoundEnd, final: viewFinal }[S.room.status] || viewLobby)();
   }
+  const chatEl = document.getElementById("chatList"), stick = !chatEl || chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 40;
   app.innerHTML = html;
+  const chatNew = document.getElementById("chatList"); if (chatNew && stick) chatNew.scrollTop = chatNew.scrollHeight;
   if (screen !== lastScreen) { app.classList.remove("screen"); void app.offsetWidth; app.classList.add("screen"); window.scrollTo(0, 0); }
   lastScreen = screen;
   keep.forEach(([id, val, focused, pos]) => {
@@ -1009,6 +1191,16 @@ const ACTIONS = {
   skip: () => send({ type: "skip" }),
   pass: () => send({ type: "pass" }),
   toVote: () => send({ type: "toVote" }),
+  chat: () => { const t = takeInput("chatInput"); if (t) send({ type: "chat", text: t }); document.getElementById("chatInput")?.focus(); },
+  react: el => react(el.dataset.e),
+  addPair: () => {
+    const a = (document.getElementById("pairA")?.value || "").trim(), b = (document.getElementById("pairB")?.value || "").trim();
+    if (!a || !b) { S.err = "Écris les deux mots."; render(); return; }
+    const h = takeInput("pairH"); takeInput("pairA"); takeInput("pairB");
+    send({ type: "addPair", a, b, hint: h });
+  },
+  delPair: el => send({ type: "delPair", id: el.dataset.id }),
+  mime: () => send({ type: "mime" }),
   peekStart: () => { S.peek = { step: "pick" }; render(); },
   peekPick: el => { S.peek = { step: "confirm", uid: el.dataset.u }; render(); },
   peekReady: () => { S.peek = { ...S.peek, step: "show", n: Date.now() }; render(); },
