@@ -322,12 +322,18 @@ function startManche(G, local) {
   if (Math.random() < .5) [a, b] = [b, a];
   const roles = {};
   ids.forEach((id, i) => { roles[id] = { role: i < s.uc ? "uc" : i < s.uc + s.ghost ? "ghost" : "civil" }; });
-  let order = shuffle(ids);
-  const firstOk = order.findIndex(id => roles[id].role !== "ghost");
-  order = order.slice(firstOk).concat(order.slice(0, firstOk));
+  const order = speakingOrder(ids, roles, G.lastFirst);
+  G.lastFirst = order[0];
   ids.forEach(id => { if (G.scores[id] == null) G.scores[id] = 0; });
   Object.assign(G, { status: local ? "deal" : "clues", deal: 0, manche: G.manche + 1, cycle: 1, tour: 1, speaker: 0, toursNow: s.tours,
     order, alive: order.slice(), inRound: ids, roles, words: { civil: a, uc: b, hint }, lastOut: null, winner: null });
+}
+function speakingOrder(ids, roles, avoidFirst) {
+  const order = shuffle(ids);
+  const ok = id => roles[id]?.role !== "ghost";
+  let first = order.findIndex(id => ok(id) && id !== avoidFirst);
+  if (first < 0) first = Math.max(0, order.findIndex(ok));
+  return order.slice(first).concat(order.slice(0, first));
 }
 function advance(G) {
   G.speaker++;
@@ -430,7 +436,11 @@ function apply(G, actor, a) {
       if (w) endManche(G, w); else G.status = "result";
       return "";
     }
-    case "continue": if (host && st === "result") Object.assign(G, { status: "clues", cycle: G.cycle + 1, tour: 1, speaker: 0, toursNow: 1 }); return "";
+    case "continue":
+      if (!host || st !== "result") return "";
+      G.order = speakingOrder(G.alive, G.roles, G.lastFirst); G.lastFirst = G.order[0];
+      Object.assign(G, { status: "clues", cycle: G.cycle + 1, tour: 1, speaker: 0, toursNow: 1 });
+      return "";
     case "toVote": if (host && st === "clues") Object.assign(G, { status: "vote", speaker: 0 }); return "";
     case "pass": if (st === "clues" && G.order[G.speaker] === actor) advance(G); return "";
     case "theme": if (host && st === "lobby" && THEMES[a.value]) G.settings.theme = a.value; return "";
@@ -800,7 +810,8 @@ function viewClues() {
   <div class="panel"><h2>Indices à l'oral</h2>
     <p class="small muted">Chacun dit un mot en rapport avec le sien, dans cet ordre${(r.toursNow || r.settings.tours) > 1 ? `, ${r.toursNow || r.settings.tours} tours de suite` : ""}. Puis passez au vote.</p>
     <ol class="order">${r.order.map(id => `<li>${esc(nameOf(id))}</li>`).join("")}</ol>
-    <button class="primary" data-a="toVote">Passer au vote</button></div>`;
+    <button class="primary" data-a="toVote">Passer au vote</button>
+    <button class="ghost" data-a="peekStart">Revoir mon mot</button></div>`;
   return `${bar()}${statusLine()}${mySlip()}
   <div class="panel"><h2>${mine ? "À toi de jouer" : `C'est au tour de ${esc(nameOf(sp))}`}</h2>
     ${mine ? `<div class="row"><input type="text" id="clueInput" class="grow" maxlength="40" placeholder="Ton indice en un mot" data-enter="clue" autocomplete="off">
@@ -819,6 +830,7 @@ function viewVote() {
     <p class="small muted">Débattez, votez à main levée, puis touchez le joueur désigné.</p>
     <div class="votes">${r.alive.map(id => `<button data-a="vote" data-u="${esc(id)}" class="${S.pick === id ? "mine" : ""}"><span>${esc(nameOf(id))}</span></button>`).join("")}</div>
     <button class="danger" data-a="confirmVote" ${S.pick ? "" : "disabled"}>${S.pick ? `Éliminer ${esc(nameOf(S.pick))}` : "Choisis un joueur"}</button>
+    <button class="ghost" data-a="peekStart">Revoir mon mot</button>
     ${errLine()}</div>
   ${wordsPanel()}`;
   const vs = r.votes.filter(v => v.manche === r.manche && v.cycle === r.cycle && r.alive.includes(v.uid));
@@ -838,10 +850,27 @@ function outLine(lo) {
     <p>C'était : <span class="tag ${lo.role}">${ROLE_LABEL[lo.role]}</span></p>
     ${lo.guess ? `<p class="muted">Le Fantôme a proposé « ${esc(lo.guess)} » : ${lo.right ? "bonne réponse !" : "raté."}</p>` : ""}`;
 }
+function viewPeek() {
+  const r = S.room, pk = S.peek;
+  if (pk.step === "pick") return `${bar()}${statusLine()}
+  <div class="panel"><h2>Qui veut revoir son mot ?</h2>
+    <div class="votes">${r.alive.map(id => `<button data-a="peekPick" data-u="${esc(id)}"><span>${esc(nameOf(id))}</span></button>`).join("")}</div>
+    <button class="ghost" data-a="peekClose">Annuler</button></div>`;
+  if (pk.step === "confirm") return `${bar()}${statusLine()}
+  <div class="panel pass stack"><p class="label">Passe l'appareil à</p><p class="who">${esc(nameOf(pk.uid))}</p>
+    <p class="small muted">Les autres, regardez ailleurs.</p>
+    <button class="primary" data-a="peekReady">C'est moi, ${esc(nameOf(pk.uid))}</button>
+    <button class="ghost" data-a="peekClose">Annuler</button></div>`;
+  return `${bar()}${statusLine()}
+  <div class="panel pass stack"><p class="label">${esc(nameOf(pk.uid))}</p>${slip(pk.uid, "peek" + r.manche + pk.uid + pk.n)}
+    <p class="small muted">Touche la carte pour voir ton mot, puis cache-le.</p>
+    <button class="primary" data-a="peekClose">J'ai vu, retour au jeu</button></div>`;
+}
 function viewResult() {
   return `${bar()}${statusLine()}${mySlip()}
   <div class="panel reveal stack">${outLine(S.room.lastOut)}</div>
   ${isHost() ? `<button class="primary" data-a="continue">Tour de parole suivant</button>` : `<p class="small muted">L'hôte relance la suite…</p>`}
+  ${isLocal() ? `<button class="ghost" data-a="peekStart">Revoir mon mot</button>` : ""}
   ${wordsPanel()}`;
 }
 function viewGhostGuess() {
@@ -900,7 +929,9 @@ function render() {
       ${S.net === "lost" ? `${errLine()}<div class="row"><button class="primary" data-a="reconnect">Réessayer</button><button class="ghost" data-a="leave">Retour</button></div>` : `<p class="muted">Salon ${esc(S.code)}</p>`}</div>`;
   } else {
     screen = S.room.status + (S.room.status === "deal" ? S.room.deal + "" + S.dealReady : "");
-    html = ({ lobby: viewLobby, deal: viewDeal, clues: viewClues, vote: viewVote, result: viewResult, ghostGuess: viewGhostGuess, roundEnd: viewRoundEnd, final: viewFinal }[S.room.status] || viewLobby)();
+    if (S.peek && (!isLocal() || !["clues", "vote", "result"].includes(S.room.status))) S.peek = null;
+    if (S.peek) screen = "peek" + S.peek.step;
+    html = S.peek ? viewPeek() : ({ lobby: viewLobby, deal: viewDeal, clues: viewClues, vote: viewVote, result: viewResult, ghostGuess: viewGhostGuess, roundEnd: viewRoundEnd, final: viewFinal }[S.room.status] || viewLobby)();
   }
   app.innerHTML = html;
   if (screen !== lastScreen) { app.classList.remove("screen"); void app.offsetWidth; app.classList.add("screen"); window.scrollTo(0, 0); }
@@ -943,6 +974,10 @@ const ACTIONS = {
   skip: () => send({ type: "skip" }),
   pass: () => send({ type: "pass" }),
   toVote: () => send({ type: "toVote" }),
+  peekStart: () => { S.peek = { step: "pick" }; render(); },
+  peekPick: el => { S.peek = { step: "confirm", uid: el.dataset.u }; render(); },
+  peekReady: () => { S.peek = { ...S.peek, step: "show", n: Date.now() }; render(); },
+  peekClose: () => { S.peek = null; S.revealed = false; render(); },
   theme: el => send({ type: "theme", value: el.dataset.v }),
   vote: el => { if (isLocal()) { S.pick = S.pick === el.dataset.u ? null : el.dataset.u; render(); } else send({ type: "vote", target: el.dataset.u }); },
   confirmVote: () => { const t = S.pick; S.pick = null; if (t) send({ type: "eliminate", target: t }); },
