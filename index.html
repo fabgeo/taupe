@@ -64,8 +64,16 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Home */
 .brand { display: flex; flex-direction: column; gap: 10px; padding: 14px 0 6px; }
-.brand .logo { display: flex; align-items: center; gap: 12px; }
-.brand svg { width: 46px; height: 46px; flex: none; }
+.brand .logo { display: flex; align-items: flex-end; gap: 8px; }
+.brand .mole { width: clamp(120px, 34vw, 170px); height: auto; flex: none; margin-left: -10px; overflow: visible; }
+.mole-rise { transform-box: view-box; animation: molerise 1.1s cubic-bezier(.2, .9, .25, 1.15) .25s both, molebob 4s ease-in-out 1.6s infinite; }
+.mole-paws { animation: molepaws .35s ease-out 1.05s both; }
+.mole-eye { animation: moleblink 5s step-end 2s infinite; }
+@keyframes molerise { from { transform: translateY(72px); } to { transform: translateY(0); } }
+@keyframes molebob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+@keyframes molepaws { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes moleblink { 0%, 94%, 100% { opacity: 1; } 95%, 99% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mole-rise, .mole-paws, .mole-eye { animation: none; } }
 .brand h1 .c { color: var(--accent); }
 .modes { display: grid; gap: 12px; }
 .mode-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
@@ -799,7 +807,19 @@ function refresh() {
   S.room = isLocal() ? clone(G) : viewFor(G, S.uid);
   render();
 }
+function scramble(str, key) {
+  const k = [...key].map(c => c.charCodeAt(0)), b = new TextEncoder().encode(str);
+  return btoa(String.fromCharCode(...b.map((x, i) => x ^ k[i % k.length])));
+}
+function unscramble(b64, key) {
+  try { const k = [...key].map(c => c.charCodeAt(0)), b = Uint8Array.from(atob(b64), c => c.charCodeAt(0)); return new TextDecoder().decode(b.map((x, i) => x ^ k[i % k.length])); } catch { return ""; }
+}
+function publishBackup() {
+  if (S.mode !== "host" || !G || !S.client?.connected) return;
+  S.client.publish(topic("backup"), scramble(JSON.stringify(G), NS + S.code), { qos: 1, retain: true });
+}
 function persist() {
+  publishBackup();
   if (G && G.settings && isHost()) lsSet("uc_settings", JSON.stringify(G.settings));
   if (isLocal()) lsSet("uc_local", JSON.stringify(G));
   if (S.mode === "host") lsSet("uc_hostgame", JSON.stringify({ at: Date.now(), G }));
@@ -855,7 +875,7 @@ function broadcast() {
 }
 function wire(c, onMsg) {
   S.client = c;
-  c.on("message", (t, buf) => { if (S.client === c) onMsg(t, parse(buf)); });
+  c.on("message", (t, buf) => { if (S.client === c) onMsg(t, parse(buf), buf); });
   c.on("offline", () => { if (S.client === c && S.mode) { S.net = "reconnecting"; render(); } });
 }
 async function hostRoom(name, resume) {
@@ -868,7 +888,19 @@ async function hostRoom(name, resume) {
   if (S.mode !== "host") { try { c && c.end(true); } catch {} return; }
   if (!c) { S.mode = null; S.net = "idle"; S.err = "Impossible de joindre le serveur de jeu. Vérifie ta connexion internet."; render(); return; }
   S.broker = bi - 1;
+  if (resume && !resume.takeover) {
+    // Someone may have taken over while we were away: if so, come back as a player.
+    const other = await new Promise(res => {
+      const t = setTimeout(() => res(null), 2500);
+      c.on("message", (tp, buf) => { const m = parse(buf); if (tp === NS + S.code + "/host" && m && m.on && m.host && m.host !== S.uid && Date.now() - m.at < 60000) { clearTimeout(t); res(m.host); } });
+      c.subscribe(NS + S.code + "/host", { qos: 1 });
+    });
+    if (other) { try { c.end(true); } catch {} lsSet("uc_hostgame", ""); S.mode = null; joinRoom(S.code, name); return; }
+  }
+  const tookOver = !!(resume && resume.takeover);
+  if (resume) delete resume.takeover;
   G = resume ? resume : freshRoom(S.code, S.uid);
+  if (tookOver) { G.turnStart = Date.now(); G.chat = (G.chat || []).concat({ uid: S.uid, text: "J'ai repris la partie après le départ de l'hôte.", at: Date.now(), manche: G.manche }).slice(-400); }
   G.host = S.uid;
   Object.values(G.players).forEach(p => { if (p.uid !== S.uid) p.online = false; });
   apply(G, S.uid, { type: "join", name });
@@ -891,10 +923,10 @@ async function hostRoom(name, resume) {
     if (m.t === "hello") lastSent.delete(uid);
     persist(); broadcast(); refresh();
   });
-  const announce = () => { pub(topic("host"), { on: true, at: Date.now() }, true); lastSent.clear(); broadcast(); };
+  const announce = () => { pub(topic("host"), { on: true, at: Date.now(), host: S.uid }, true); lastSent.clear(); broadcast(); publishBackup(); };
   c.subscribe([topic("act"), topic("fx")], { qos: 1 }, announce);
   // Re-announce regularly: after a crash, the old connection's "gone" notice can arrive late and must not win.
-  const beat = setInterval(() => { if (S.client !== c) clearInterval(beat); else if (c.connected) pub(topic("host"), { on: true, at: Date.now() }, true); }, 10000);
+  const beat = setInterval(() => { if (S.client !== c) clearInterval(beat); else if (c.connected) pub(topic("host"), { on: true, at: Date.now(), host: S.uid }, true); }, 10000);
   // Turn timer: tell everyone the time left, and pass the turn of a player who runs out of time.
   G.turnStart = Date.now();
   let lastTick = 0;
@@ -911,6 +943,23 @@ async function hostRoom(name, resume) {
   c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe([topic("act"), topic("fx")], { qos: 1 }, announce); render(); } });
   S.net = "ok"; keepAwake(); persist(); refresh();
 }
+// The host has gone: after a short wait, the next connected player in line becomes the host.
+function scheduleTakeover(code, name) {
+  clearTimeout(S.takeoverTimer);
+  const B = S.backup;
+  if (!B || !B.players || !B.players[S.uid]) return;
+  const line = Object.values(B.players).filter(p => p.uid !== B.host && p.online !== false).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0)).map(p => p.uid);
+  const rank = line.indexOf(S.uid);
+  if (rank < 0) return;
+  S.takeoverTimer = setTimeout(() => {
+    if (S.mode !== "guest" || S.code !== code || S.net !== "hostaway" || !S.backup) return;
+    const next = clone(S.backup);
+    if (next.players[next.host]) next.players[next.host].online = false;
+    next.takeover = true;
+    lsSet("uc_guest", "");
+    hostRoom(name, next);
+  }, 20000 + rank * 8000);
+}
 function kick(uid) {
   pub(topic("p", uid), { t: "kicked" }, false);
   setTimeout(() => pub(topic("p", uid), null, true), 300);
@@ -921,7 +970,7 @@ function kick(uid) {
 async function joinRoom(code, name) {
   if (!window.mqtt) { S.err = "Le module de connexion n'a pas chargé. Vérifie ta connexion internet."; render(); return; }
   closeNet();
-  S.mode = "guest"; S.code = code; S.net = "connecting"; S.err = ""; S.room = null;
+  S.mode = "guest"; S.code = code; S.net = "connecting"; S.err = ""; S.room = null; S.backup = null; clearTimeout(S.takeoverTimer);
   lsSet("uc_guest", code); render();
   const order = [S.brokerHint, ...BROKERS.keys()].filter((v, i, a) => v != null && v < BROKERS.length && a.indexOf(v) === i);
   let found = null;
@@ -944,12 +993,13 @@ async function joinRoom(code, name) {
     return;
   }
   const c = found;
-  wire(c, (t, m) => {
+  wire(c, (t, m, buf) => {
     if (t === topic("fx")) { showReaction(m); return; }
     if (t === topic("tick")) { if (m && m.key) S.deadline = { key: m.key, at: Date.now() + (+m.left || 0) }; return; }
+    if (t === topic("backup")) { const j = parse(unscramble(buf.toString(), NS + code)); if (j && j.players) S.backup = j; return; }
     if (t === topic("host")) {
-      if (!m || !m.on) { S.net = "hostaway"; render(); }
-      else if (S.net === "hostaway" || S.net === "lost") { S.net = "ok"; S.err = ""; hello(); render(); }
+      if (!m || !m.on) { S.net = "hostaway"; scheduleTakeover(code, name); render(); }
+      else { clearTimeout(S.takeoverTimer); if (S.net === "hostaway" || S.net === "lost") { S.net = "ok"; S.err = ""; hello(); render(); } }
       return;
     }
     if (t !== topic("p", S.uid) || !m) return;
@@ -958,8 +1008,8 @@ async function joinRoom(code, name) {
     else if (m.t === "kicked") { leave(); S.err = "L'hôte t'a retiré·e du salon."; render(); }
   });
   const hello = () => pub(topic("act"), { t: "hello", uid: S.uid, name }, false);
-  c.subscribe([topic("p", S.uid), topic("tick"), topic("fx")], { qos: 1 }, hello);
-  c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe([topic("p", S.uid), topic("host"), topic("tick"), topic("fx")], { qos: 1 }, hello); render(); } });
+  c.subscribe([topic("p", S.uid), topic("tick"), topic("fx"), topic("backup")], { qos: 1 }, hello);
+  c.on("connect", () => { if (S.client === c) { S.net = "ok"; c.subscribe([topic("p", S.uid), topic("host"), topic("tick"), topic("fx"), topic("backup")], { qos: 1 }, hello); render(); } });
   S.net = "ok"; keepAwake(); render();
 }
 function closeNet() {
@@ -971,6 +1021,7 @@ function leave() {
   if (S.mode === "guest" && c?.connected) pub(topic("act"), { t: "act", uid: S.uid, a: { type: "leave" } }, false);
   if (S.mode === "host" && c?.connected && G) {
     pub(topic("host"), null, true);
+    pub(topic("backup"), null, true);
     Object.keys(G.players).forEach(uid => { if (uid !== G.host) pub(topic("p", uid), null, true); });
   }
   if (S.mode === "host") lsSet("uc_hostgame", "");
@@ -990,10 +1041,34 @@ document.addEventListener("visibilitychange", () => {
 /* ================= Rendering ================= */
 const MASK = `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M4 18c6-5 14-6 20-2 6-4 14-3 20 2-1 9-6 15-13 15-3 0-5-2-7-5-2 3-4 5-7 5-7 0-12-6-13-15z" fill="#F5B83D"/>
   <ellipse cx="15" cy="22" rx="4.5" ry="3" fill="#07070A"/><ellipse cx="33" cy="22" rx="4.5" ry="3" fill="#07070A"/></svg>`;
+// The mascot: a masked mole popping its head out of a hole.
+const MOLE = `<svg class="mole" viewBox="0 0 220 170" role="img" aria-label="Une taupe masquée sort de son trou">
+  <defs><clipPath id="moleHole"><rect x="0" y="0" width="220" height="129"/></clipPath>
+    <radialGradient id="moleFur" cx="50%" cy="30%" r="70%"><stop offset="0" stop-color="#6E5A51"/><stop offset="1" stop-color="#3E302A"/></radialGradient></defs>
+  <ellipse cx="110" cy="129" rx="60" ry="13" fill="#140D0A"/>
+  <g clip-path="url(#moleHole)"><g class="mole-rise">
+    <path d="M56 175 C56 104 72 60 110 60 C148 60 164 104 164 175 Z" fill="url(#moleFur)"/>
+    <path d="M86 175 C86 128 95 106 110 106 C125 106 134 128 134 175 Z" fill="#8A7268" opacity=".55"/>
+    <ellipse cx="110" cy="99" rx="17" ry="12" fill="#8A7268"/>
+    <ellipse cx="110" cy="93" rx="8.5" ry="6.5" fill="#FF8FA3"/><ellipse cx="107" cy="91" rx="2.4" ry="1.6" fill="#FFD1DA"/>
+    <g stroke="#C9B3A9" stroke-width="1.4" stroke-linecap="round" opacity=".8">
+      <path d="M93 99 L72 95"/><path d="M93 103 L73 106"/><path d="M127 99 L148 95"/><path d="M127 103 L147 106"/></g>
+    <path d="M74 80 c8-9 21-10 36-5 15-5 28-4 36 5 -2 11-10 16-19 16 -7 0-11-3-17-8 -6 5-10 8-17 8 -9 0-17-5-19-16z" fill="#F5B83D"/>
+    <ellipse cx="94" cy="83" rx="5.5" ry="3.8" fill="#07070A"/><ellipse cx="126" cy="83" rx="5.5" ry="3.8" fill="#07070A"/>
+    <circle class="mole-eye" cx="95.5" cy="82" r="1.2" fill="#fff"/><circle class="mole-eye" cx="127.5" cy="82" r="1.2" fill="#fff"/>
+    <path d="M101 112 q9 6 18 0" stroke="#3E302A" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g></g>
+  <path d="M28 141 C38 119 70 117 110 121 C150 117 182 119 192 141 C176 154 44 154 28 141 Z" fill="#3A2820"/>
+  <circle cx="44" cy="134" r="5" fill="#4A3329"/><circle cx="178" cy="136" r="6" fill="#4A3329"/><circle cx="160" cy="146" r="3.5" fill="#2C1E18"/><circle cx="62" cy="147" r="3" fill="#2C1E18"/>
+  <g class="mole-paws">
+    <ellipse cx="80" cy="125" rx="13" ry="8" fill="#FF9EB0"/><ellipse cx="140" cy="125" rx="13" ry="8" fill="#FF9EB0"/>
+    <g stroke="#F3E3DA" stroke-width="2" stroke-linecap="round"><path d="M72 128 l-2 5"/><path d="M78 130 l-1 5"/><path d="M84 130 l0 5"/><path d="M136 130 l0 5"/><path d="M142 130 l1 5"/><path d="M148 128 l2 5"/></g>
+  </g>
+</svg>`;
 const errLine = () => S.err ? `<p class="err">${esc(S.err)}</p>` : "";
 
 function viewHome() {
-  return `<div class="brand"><div class="logo">${MASK}<h1>Tau<span class="c">pe</span></h1></div>
+  return `<div class="brand"><div class="logo">${MOLE}<h1>Tau<span class="c">pe</span></h1></div>
     <p class="muted">Tout le monde reçoit un mot. Sauf que certains ont un mot presque pareil, et le Fantôme n'en a aucun.</p></div>
   <div class="modes">
   <div class="panel">
@@ -1028,7 +1103,7 @@ function viewHome() {
 }
 function bar() {
   const net = S.mode === "guest" && S.net === "hostaway" && S.room
-    ? `<div class="netbar"><span>L'hôte s'est absenté. La partie reprend toute seule dès son retour.</span></div>`
+    ? `<div class="netbar"><span>L'hôte s'est absenté. S'il ne revient pas d'ici quelques secondes, un autre joueur reprend la partie automatiquement.</span></div>`
     : S.mode === "guest" && S.net === "lost" && S.room
     ? `<div class="netbar"><span>Connexion perdue avec l'hôte.</span><button data-a="reconnect">Se reconnecter</button></div>`
     : !isLocal() && S.net === "reconnecting" ? `<div class="netbar"><span>Connexion instable, reconnexion…</span></div>` : "";
