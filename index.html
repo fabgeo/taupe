@@ -334,6 +334,22 @@ body { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
 /* Cards like small wooden boards */
 .panel { background: repeating-linear-gradient(90deg, rgba(255,255,255,.014) 0 2px, transparent 2px 11px), linear-gradient(180deg, rgba(255,255,255,.025), transparent 40%), var(--surface); border-top: 2px solid rgba(139, 94, 60, .55); }
 @media (prefers-reduced-motion: reduce) { .mole-rise, .mole-paws, .mask-fall, .mole-eye { animation: none !important; } .mask-fall { opacity: 0; } }
+.av.xl { width: 84px; height: 84px; }
+.avpanel { flex-direction: row; align-items: center; gap: 16px; }
+.avpanel .stack { min-width: 0; flex: 1; }
+.avedit { align-items: center; text-align: center; }
+.avbig { width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle at 50% 35%, var(--raise), var(--bg)); overflow: hidden; display: grid; place-items: center; border: 2px solid var(--accent); }
+.avbig .mhead { width: 120%; height: auto; margin-top: 10%; }
+.avrow { display: flex; flex-direction: column; gap: 6px; }
+.avrow + .avrow { margin-top: 6px; }
+.avopts { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; }
+.avopts button { flex: none; width: 72px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--bg); border-radius: 12px; font-weight: 400; }
+.avopts button .mhead { width: 56px; height: 52px; }
+.avopts button span { font-size: .66rem; color: var(--muted); line-height: 1.15; text-align: center; }
+.avopts button.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
+.avopts button.on span { color: var(--accent); }
+.avopts button.sw { width: 58px; }
+.swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); display: block; }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -722,20 +738,20 @@ function apply(G, actor, a) {
     case "join": {
       const name = String(a.name || "").trim().slice(0, 20) || "Joueur";
       const p = G.players[actor];
-      G.players[actor] = { uid: actor, name, joinedAt: p ? p.joinedAt : Date.now(), online: true, av: p?.av || (ACCS[a.av] ? a.av : nextFreeAcc(G)) };
+      G.players[actor] = { uid: actor, name, joinedAt: p ? p.joinedAt : Date.now(), online: true, av: p?.av ? normLook(p.av) : (a.av && typeof a.av === "object" ? normLook(a.av) : randomLook()) };
       return "";
     }
     case "addLocal": {
       const name = String(a.name || "").trim().slice(0, 20);
       if (!name) return "";
       if (listPlayers(G).some(p => norm(p.name) === norm(name))) return "Ce prénom est déjà dans la liste.";
-      const uid = "p" + rid(); G.players[uid] = { uid, name, joinedAt: Date.now(), online: true, av: nextFreeAcc(G) }; return "";
+      const uid = "p" + rid(); G.players[uid] = { uid, name, joinedAt: Date.now(), online: true, av: randomLook() }; return "";
     }
     case "leave": if (!host) removePlayer(G, actor); return "";
     case "kick": if (host && a.uid !== G.host) removePlayer(G, a.uid); return "";
     case "avatar": {
       const who = host && a.uid && G.players[a.uid] ? a.uid : actor;
-      if (G.players[who] && ACCS[a.av]) G.players[who].av = a.av;
+      if (G.players[who] && a.av && typeof a.av === "object") G.players[who].av = normLook(a.av);
       return "";
     }
     case "set": {
@@ -1125,40 +1141,104 @@ document.addEventListener("visibilitychange", () => {
 const MASK = `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M4 18c6-5 14-6 20-2 6-4 14-3 20 2-1 9-6 15-13 15-3 0-5-2-7-5-2 3-4 5-7 5-7 0-12-6-13-15z" fill="#F5B83D"/>
   <ellipse cx="15" cy="22" rx="4.5" ry="3" fill="#07070A"/><ellipse cx="33" cy="22" rx="4.5" ry="3" fill="#07070A"/></svg>`;
 // The mascot. moleParts draws the mole (fur, mask, face, accessory); moleScene puts it in its hole; moleHead crops it as an avatar.
-const ACCS = { masque: "Masque", lunettes: "Lunettes", casquette: "Casquette", noeud: "Nœud pap'", couronne: "Couronne",
-  bandana: "Bandana", casque: "Casque gaming", chapeau: "Haut-de-forme", fleur: "Fleur", moustache: "Moustache" };
+// Avatar options, by category. Each player's mole ("look") picks one option per category.
+const LOOK = {
+  fur: { label: "Pelage", opts: { brun: ["Brun", "#6E5A51", "#3E302A", "#8A7268"], chocolat: ["Chocolat", "#5E3D2A", "#2E1C12", "#7E5844"], noir: ["Noir", "#3C3C45", "#17171C", "#5A5A64"],
+    gris: ["Gris", "#A3A1A9", "#64626C", "#C2C0C8"], roux: ["Roux", "#CC7A3E", "#8A4520", "#E5A26A"], creme: ["Crème", "#ECDDCA", "#B8A68E", "#F7EFE4"],
+    rose: ["Rose bonbon", "#F29BB8", "#BE5E7E", "#F8C6D7"], bleu: ["Bleu nuit", "#4E63A2", "#26345E", "#7488C4"], vert: ["Vert alien", "#6FBF73", "#3A7A3F", "#9ADA9C"] } },
+  hair: { label: "Coiffure", opts: { aucune: ["Aucune"], meche: ["Mèche"], crete: ["Crête"], afro: ["Afro"], longs: ["Cheveux longs"], couettes: ["Couettes"], chignon: ["Chignon"], herisse: ["Hérissé"] } },
+  hairColor: { label: "Couleur des cheveux", opts: { brun: ["Brun", "#3A2418"], noir: ["Noir", "#141418"], blond: ["Blond", "#E8C15A"], roux: ["Roux", "#C4532A"],
+    blanc: ["Blanc", "#EDEDF2"], rose: ["Rose", "#FF6FB5"], bleu: ["Bleu", "#3DA5FF"], vert: ["Vert", "#4CCB6A"] } },
+  eyes: { label: "Yeux", opts: { aucun: ["Rien"], masque: ["Masque"], lunettes: ["Lunettes"], soleil: ["Lunettes de soleil"], coeur: ["Lunettes cœur"], monocle: ["Monocle"], pirate: ["Cache-œil"] } },
+  face: { label: "Visage", opts: { aucun: ["Rien"], moustache: ["Moustache"], barbe: ["Barbe"], bouc: ["Bouc"], troisjours: ["Barbe de 3 jours"], joues: ["Joues roses"] } },
+  hat: { label: "Chapeau", opts: { aucun: ["Rien"], casquette: ["Casquette"], bonnet: ["Bonnet"], chapeau: ["Haut-de-forme"], couronne: ["Couronne"], bandana: ["Bandana"],
+    casque: ["Casque gaming"], cornes: ["Cornes"], aureole: ["Auréole"], fleur: ["Fleur"] } },
+  neck: { label: "Cou", opts: { aucun: ["Rien"], noeud: ["Nœud pap'"], cravate: ["Cravate"], chaine: ["Chaîne en or"], echarpe: ["Écharpe"] } }
+};
+// Older saves stored a single accessory name.
+const OLD_ACC = { masque: { eyes: "masque" }, lunettes: { eyes: "lunettes" }, casquette: { hat: "casquette" }, noeud: { neck: "noeud" }, couronne: { hat: "couronne" },
+  bandana: { hat: "bandana" }, casque: { hat: "casque" }, chapeau: { hat: "chapeau" }, fleur: { hat: "fleur" }, moustache: { face: "moustache" } };
+function normLook(av) {
+  const base = { fur: "brun", hair: "aucune", hairColor: "brun", eyes: "aucun", face: "aucun", hat: "aucun", neck: "aucun" };
+  const src = typeof av === "string" ? (OLD_ACC[av] || {}) : (av && typeof av === "object" ? av : { eyes: "masque" });
+  for (const k in base) if (src[k] && LOOK[k].opts[src[k]]) base[k] = src[k];
+  return base;
+}
+function randomLook() {
+  const pick = (k, pNone) => { const keys = Object.keys(LOOK[k].opts); return Math.random() < pNone ? keys[0] : keys[1 + Math.floor(Math.random() * (keys.length - 1))]; };
+  const furs = Object.keys(LOOK.fur.opts);
+  return { fur: furs[Math.floor(Math.random() * furs.length)], hair: pick("hair", .45), hairColor: Object.keys(LOOK.hairColor.opts)[Math.floor(Math.random() * 8)],
+    eyes: pick("eyes", .45), face: pick("face", .55), hat: pick("hat", .45), neck: pick("neck", .6) };
+}
 let moleSeq = 0;
-function moleParts({ mask = "on", mood = "calm", ghost = false, acc = null } = {}, id) {
-  const fur = ghost ? ["#FBFAFF", "#B9B2E8", "#FFFFFF"] : ["#6E5A51", "#3E302A", "#8A7268"];
+function moleParts({ mask = "on", mood = "calm", ghost = false, look = null } = {}, id) {
+  const L = look ? normLook(look) : null;
+  const fur = ghost ? ["#FBFAFF", "#B9B2E8", "#FFFFFF"] : L ? LOOK.fur.opts[L.fur].slice(1) : ["#6E5A51", "#3E302A", "#8A7268"];
+  const hc = L ? LOOK.hairColor.opts[L.hairColor][1] : "#3A2418";
   const eyes = mood === "laugh" ? `<path d="M88 84 q6-6 12 0 M120 84 q6-6 12 0" stroke="#07070A" stroke-width="2.6" fill="none" stroke-linecap="round"/>`
     : mood === "surprised" ? `<circle cx="94" cy="83" r="5.2" fill="#07070A"/><circle cx="126" cy="83" r="5.2" fill="#07070A"/><circle cx="95.8" cy="81.5" r="1.6" fill="#fff"/><circle cx="127.8" cy="81.5" r="1.6" fill="#fff"/>`
     : `<ellipse cx="94" cy="83" rx="4" ry="3.6" fill="#07070A"/><ellipse cx="126" cy="83" rx="4" ry="3.6" fill="#07070A"/><circle class="mole-eye" cx="95.3" cy="82" r="1.1" fill="#fff"/><circle class="mole-eye" cx="127.3" cy="82" r="1.1" fill="#fff"/>`;
   const maskShape = `<path d="M74 80 c8-9 21-10 36-5 15-5 28-4 36 5 -2 11-10 16-19 16 -7 0-11-3-17-8 -6 5-10 8-17 8 -9 0-17-5-19-16z" fill="#F5B83D"/>
     <ellipse cx="94" cy="83" rx="5.5" ry="3.8" fill="#07070A"/><ellipse cx="126" cy="83" rx="5.5" ry="3.8" fill="#07070A"/>`;
-  const masked = mask === "on" || acc === "masque";
+  const masked = mask === "on" || (L && L.eyes === "masque");
   const face = masked ? `${maskShape}${mood === "laugh" ? "" : `<circle class="mole-eye" cx="95.5" cy="82" r="1.2" fill="#fff"/><circle class="mole-eye" cx="127.5" cy="82" r="1.2" fill="#fff"/>`}`
     : `${eyes}${mask === "fall" ? `<g class="mask-fall">${maskShape}</g>` : ""}`;
   const mouth = mood === "laugh" ? `<path d="M99 108 q11 14 22 0 z" fill="#3A1F1F"/><path d="M103 111 q7 5 14 0" fill="#FF8FA3"/>`
     : mood === "surprised" ? `<ellipse cx="110" cy="113" rx="5" ry="6" fill="#3A1F1F"/>`
     : `<path d="M101 112 q9 6 18 0" stroke="${ghost ? "#8C84C4" : "#3E302A"}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
-  const A = {
+  const HAIR_BACK = {
+    afro: `<g fill="${hc}"><circle cx="84" cy="70" r="17"/><circle cx="96" cy="54" r="18"/><circle cx="118" cy="50" r="19"/><circle cx="137" cy="62" r="17"/><circle cx="142" cy="80" r="12"/><circle cx="78" cy="86" r="11"/></g>`,
+    longs: `<path d="M64 128 Q56 70 110 54 Q164 70 156 128 L142 128 Q146 84 110 72 Q74 84 78 128 Z" fill="${hc}"/>`,
+    chignon: `<circle cx="110" cy="49" r="12" fill="${hc}"/><path d="M100 55 q10 -4 20 0" stroke="#00000033" stroke-width="2" fill="none"/>`,
+    couettes: `<g fill="${hc}"><circle cx="61" cy="80" r="11"/><circle cx="159" cy="80" r="11"/></g><g fill="#FF6FB5"><circle cx="70" cy="76" r="3.4"/><circle cx="150" cy="76" r="3.4"/></g>`
+  };
+  const HAIR_FRONT = {
+    meche: `<path d="M84 70 Q96 44 136 58 Q118 54 104 64 Q96 70 84 70 Z" fill="${hc}"/>`,
+    crete: `<path d="M101 66 L103 38 L109 52 L112 34 L116 52 L121 40 L119 66 Z" fill="${hc}"/>`,
+    longs: `<path d="M80 74 Q90 56 110 56 Q130 56 140 74 Q126 64 110 66 Q94 64 80 74 Z" fill="${hc}"/>`,
+    couettes: `<path d="M84 70 Q110 52 136 70 Q122 62 110 63 Q98 62 84 70 Z" fill="${hc}"/>`,
+    herisse: `<path d="M82 70 L86 56 L93 64 L98 50 L104 62 L110 47 L116 62 L122 50 L127 64 L134 56 L138 70 Q110 60 82 70 Z" fill="${hc}"/>`,
+    afro: `<path d="M84 72 Q110 60 136 72 Q122 64 110 65 Q98 64 84 72 Z" fill="${hc}"/>`
+  };
+  const EYES = {
     lunettes: `<g fill="rgba(255,255,255,.14)" stroke="#16161C" stroke-width="3"><circle cx="94" cy="83" r="9"/><circle cx="126" cy="83" r="9"/></g><path d="M103 82 h14" stroke="#16161C" stroke-width="3"/>`,
+    soleil: `<g fill="#101015"><rect x="82" y="76" width="24" height="14" rx="6"/><rect x="114" y="76" width="24" height="14" rx="6"/></g><path d="M106 80 h8" stroke="#101015" stroke-width="3"/><path d="M86 79 l6 0 M118 79 l6 0" stroke="#ffffff66" stroke-width="2" stroke-linecap="round"/>`,
+    coeur: `<g fill="#FF4D8D" stroke="#C42A64" stroke-width="1.5"><path d="M94 92 l-10 -10 a5.5 5.5 0 0 1 10 -6 a5.5 5.5 0 0 1 10 6 z"/><path d="M126 92 l-10 -10 a5.5 5.5 0 0 1 10 -6 a5.5 5.5 0 0 1 10 6 z"/></g><path d="M104 81 h12" stroke="#C42A64" stroke-width="2.5"/>`,
+    monocle: `<circle cx="126" cy="83" r="9" fill="rgba(255,255,255,.12)" stroke="#D9A520" stroke-width="2.6"/><path d="M134 88 q8 14 2 30" stroke="#D9A520" stroke-width="1.4" fill="none"/>`,
+    pirate: `<path d="M76 70 L146 92" stroke="#101015" stroke-width="2.6"/><ellipse cx="94" cy="83" rx="9" ry="8" fill="#101015"/>`
+  };
+  const FACE = {
+    moustache: `<path d="M110 102 q-9 -5 -18 2 q9 3 18 -1 q9 4 18 1 q-9 -7 -18 -2z" fill="${hc}"/>`,
+    barbe: `<path d="M84 100 Q86 132 110 134 Q134 132 136 100 Q128 112 110 112 Q92 112 84 100 Z" fill="${hc}"/><path d="M103 116 q7 4 14 0" stroke="#00000055" stroke-width="2" fill="none"/>`,
+    bouc: `<path d="M103 116 Q110 132 117 116 Z" fill="${hc}"/>`,
+    troisjours: `<g fill="${hc}" opacity=".75">${[[92,106],[96,111],[101,114],[119,114],[124,111],[128,106],[106,118],[114,118],[99,108],[121,108],[110,121]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.1"/>`).join("")}</g>`,
+    joues: `<g fill="#FF6F91" opacity=".55"><ellipse cx="84" cy="98" rx="7" ry="4.5"/><ellipse cx="136" cy="98" rx="7" ry="4.5"/></g>`
+  };
+  const HAT = {
     casquette: `<path d="M77 72 Q110 36 143 72 Z" fill="#E5484D"/><ellipse cx="146" cy="70" rx="20" ry="5" fill="#B7353A"/><circle cx="110" cy="50" r="3" fill="#B7353A"/>`,
-    noeud: `<path d="M95 115 L110 121 L95 127 Z M125 115 L110 121 L125 127 Z" fill="#E5484D"/><circle cx="110" cy="121" r="3.2" fill="#B7353A"/>`,
+    bonnet: `<path d="M76 74 Q78 40 110 40 Q142 40 144 74 Z" fill="#3D7BFF"/><rect x="74" y="66" width="72" height="11" rx="5" fill="#2A5BD0"/><circle cx="110" cy="38" r="7" fill="#F2F4FF"/>`,
+    chapeau: `<rect x="93" y="28" width="34" height="34" rx="3" fill="#15151A"/><rect x="93" y="52" width="34" height="6" fill="#E5484D"/><ellipse cx="110" cy="62" rx="30" ry="5.5" fill="#15151A"/>`,
     couronne: `<path d="M88 64 L91 44 L101 56 L110 40 L119 56 L129 44 L132 64 Z" fill="#F5B83D" stroke="#C98D17" stroke-width="2" stroke-linejoin="round"/><circle cx="110" cy="56" r="2.6" fill="#E5484D"/>`,
     bandana: `<path d="M70 76 Q110 56 150 76 L150 68 Q110 48 70 68 Z" fill="#E5484D"/><path d="M150 70 l12 -6 l-2 10 z M150 72 l10 8 l-12 0 z" fill="#B7353A"/>`,
     casque: `<path d="M68 88 Q68 44 110 44 Q152 44 152 88" stroke="#22232B" stroke-width="6" fill="none"/><rect x="60" y="78" width="14" height="22" rx="5" fill="#3DD6FF"/><rect x="146" y="78" width="14" height="22" rx="5" fill="#3DD6FF"/>`,
-    chapeau: `<rect x="93" y="28" width="34" height="34" rx="3" fill="#15151A"/><rect x="93" y="52" width="34" height="6" fill="#E5484D"/><ellipse cx="110" cy="62" rx="30" ry="5.5" fill="#15151A"/>`,
-    fleur: `<g transform="translate(142 64)"><circle cx="0" cy="-6" r="5" fill="#FF8FC8"/><circle cx="6" cy="-2" r="5" fill="#FF8FC8"/><circle cx="4" cy="5" r="5" fill="#FF8FC8"/><circle cx="-4" cy="5" r="5" fill="#FF8FC8"/><circle cx="-6" cy="-2" r="5" fill="#FF8FC8"/><circle r="3.4" fill="#F5B83D"/></g>`,
-    moustache: `<path d="M110 102 q-9 -5 -18 2 q9 3 18 -1 q9 4 18 1 q-9 -7 -18 -2z" fill="#2A1F1A"/>`
+    cornes: `<g fill="#E5484D"><path d="M84 68 Q74 50 82 38 Q86 54 96 62 Z"/><path d="M136 68 Q146 50 138 38 Q134 54 124 62 Z"/></g>`,
+    aureole: `<ellipse cx="110" cy="42" rx="22" ry="6" fill="none" stroke="#F5D46B" stroke-width="4"/>`,
+    fleur: `<g transform="translate(142 64)"><circle cx="0" cy="-6" r="5" fill="#FF8FC8"/><circle cx="6" cy="-2" r="5" fill="#FF8FC8"/><circle cx="4" cy="5" r="5" fill="#FF8FC8"/><circle cx="-4" cy="5" r="5" fill="#FF8FC8"/><circle cx="-6" cy="-2" r="5" fill="#FF8FC8"/><circle r="3.4" fill="#F5B83D"/></g>`
+  };
+  const NECK = {
+    noeud: `<path d="M95 117 L110 123 L95 129 Z M125 117 L110 123 L125 129 Z" fill="#E5484D"/><circle cx="110" cy="123" r="3.2" fill="#B7353A"/>`,
+    cravate: `<path d="M106 118 h8 l-2 5 l5 16 l-7 6 l-7 -6 l5 -16 z" fill="#3D7BFF"/>`,
+    chaine: `<path d="M86 116 Q110 136 134 116" stroke="#F5C542" stroke-width="3" fill="none" stroke-dasharray="3 2"/><circle cx="110" cy="128" r="4.5" fill="#F5C542"/>`,
+    echarpe: `<path d="M78 114 Q110 130 142 114 L144 124 Q110 140 76 124 Z" fill="#E5484D"/><path d="M128 124 l6 18 l8 -3 l-4 -17 z" fill="#B7353A"/>`
   };
   return `<g ${ghost ? 'opacity=".9"' : ""}>
+    ${L ? HAIR_BACK[L.hair] || "" : ""}
     <path d="M56 175 C56 104 72 60 110 60 C148 60 164 104 164 175 Z" fill="url(#mf${id})"/>
     <path d="M86 175 C86 128 95 106 110 106 C125 106 134 128 134 175 Z" fill="${fur[2]}" opacity=".55"/>
     <ellipse cx="110" cy="99" rx="17" ry="12" fill="${fur[2]}"/>
     <ellipse cx="110" cy="93" rx="8.5" ry="6.5" fill="#FF8FA3"/><ellipse cx="107" cy="91" rx="2.4" ry="1.6" fill="#FFD1DA"/>
     <g stroke="${ghost ? "#C9C2F0" : "#C9B3A9"}" stroke-width="1.4" stroke-linecap="round" opacity=".8"><path d="M93 99 L72 95"/><path d="M93 103 L73 106"/><path d="M127 99 L148 95"/><path d="M127 103 L147 106"/></g>
-    ${face}${mouth}${acc && acc !== "masque" && A[acc] ? A[acc] : ""}
+    ${L ? FACE[L.face] || "" : ""}${face}${mouth}${L ? (EYES[L.eyes] || "") + (NECK[L.neck] || "") + (L.hat === "aucun" || L.hat === "aureole" || L.hat === "cornes" ? HAIR_FRONT[L.hair] || "" : "") + (HAT[L.hat] || "") : ""}
   </g>
   <defs><radialGradient id="mf${id}" cx="50%" cy="30%" r="70%"><stop offset="0" stop-color="${fur[0]}"/><stop offset="1" stop-color="${fur[1]}"/></radialGradient></defs>`;
 }
@@ -1180,11 +1260,7 @@ function moleHead(opts = {}, cls = "") {
   return `<svg class="mhead ${cls}" viewBox="50 24 120 112" aria-hidden="true">${moleParts({ mask: "off", ...opts }, id)}</svg>`;
 }
 // A player's avatar: their mole with the accessory they picked.
-const avatar = (uid, cls = "") => `<span class="av ${cls}">${moleHead({ acc: S.room?.players?.[uid]?.av || "masque" })}</span>`;
-function nextFreeAcc(G) {
-  const used = Object.values(G.players).map(p => p.av);
-  return Object.keys(ACCS).find(k => !used.includes(k)) || Object.keys(ACCS)[Object.keys(G.players).length % Object.keys(ACCS).length];
-}
+const avatar = (uid, cls = "") => `<span class="av ${cls}">${moleHead({ look: S.room?.players?.[uid]?.av })}</span>`;
 const errLine = () => S.err ? `<p class="err">${esc(S.err)}</p>` : "";
 
 function viewHome() {
@@ -1337,8 +1413,26 @@ function viewLobby() {
 }
 function avatarPanel() {
   const me = S.room.players[S.uid]; if (!me) return "";
-  return `<div class="panel"><div class="status"><h2>Ta taupe</h2><span class="label">${ACCS[me.av] || ""}</span></div>
-    <div class="avpick">${Object.entries(ACCS).map(([k, label]) => `<button class="${me.av === k ? "on" : ""}" data-a="pickAv" data-v="${k}" aria-label="${label}" title="${label}">${moleHead({ acc: k })}</button>`).join("")}</div></div>`;
+  return `<div class="panel avpanel">${avatar(S.uid, "xl")}<div class="stack"><h2>Ta taupe</h2>
+    <p class="small muted">Pelage, coiffure, lunettes, barbe, chapeau… Crée la tienne.</p>
+    <div class="row"><button class="primary" data-a="avOpen" data-u="${esc(S.uid)}">Personnaliser</button><button class="ghost" data-a="avRandom" data-u="${esc(S.uid)}">🎲 Au hasard</button></div></div></div>`;
+}
+function viewAvEdit() {
+  const uid = S.avEdit, p = S.room.players[uid], look = normLook(p.av);
+  const row = k => {
+    const cat = LOOK[k];
+    const items = Object.entries(cat.opts).map(([v, o]) => {
+      const on = look[k] === v;
+      const preview = k === "hairColor" ? `<i class="swatch" style="background:${o[1]}"></i>` : moleHead({ look: { ...look, [k]: v } });
+      return `<button class="${on ? "on" : ""} ${k === "hairColor" ? "sw" : ""}" data-a="avSet" data-k="${k}" data-v="${v}" aria-pressed="${on}" title="${o[0]}" aria-label="${cat.label} : ${o[0]}">${preview}<span>${o[0]}</span></button>`;
+    }).join("");
+    return `<div class="avrow"><span class="label">${cat.label}</span><div class="avopts">${items}</div></div>`;
+  };
+  return `${bar()}
+  <div class="panel avedit"><div class="avbig">${moleHead({ look })}</div><h2>${isLocal() ? "Taupe de " + esc(p.name) : "Ta taupe"}</h2>
+    <div class="row"><button class="ghost" data-a="avRandom" data-u="${esc(uid)}">🎲 Au hasard</button><button class="primary" data-a="avClose">Terminé</button></div></div>
+  <div class="panel">${Object.keys(LOOK).map(row).join("")}</div>
+  <button class="primary" data-a="avClose">Terminé</button>`;
 }
 function traitorLine(uid) {
   const r = S.room;
@@ -1667,7 +1761,9 @@ function render() {
     if (S.peek) screen = "peek" + S.peek.step;
     if (S.editing && (!isHost() || S.room.status === "lobby")) S.editing = false;
     if (S.editing) screen = "edit";
-    html = S.editing ? viewEdit() : S.peek ? viewPeek() : ({ lobby: viewLobby, deal: viewDeal, clues: viewClues, vote: viewVote, result: viewResult, ghostGuess: viewGhostGuess, roundEnd: viewRoundEnd, final: viewFinal }[S.room.status] || viewLobby)();
+    if (S.avEdit && !S.room.players[S.avEdit]) S.avEdit = null;
+    if (S.avEdit) screen = "av";
+    html = S.avEdit ? viewAvEdit() : S.editing ? viewEdit() : S.peek ? viewPeek() : ({ lobby: viewLobby, deal: viewDeal, clues: viewClues, vote: viewVote, result: viewResult, ghostGuess: viewGhostGuess, roundEnd: viewRoundEnd, final: viewFinal }[S.room.status] || viewLobby)();
   }
   const chatEl = document.getElementById("chatList"), stick = !chatEl || chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 40;
   app.innerHTML = html;
@@ -1743,8 +1839,11 @@ const ACTIONS = {
     if (!S.confirmSkip) { S.confirmSkip = true; render(); setTimeout(() => { if (S.confirmSkip) { S.confirmSkip = false; render(); } }, 4000); return; }
     S.confirmSkip = false; S.editing = false; send({ type: "skipManche" });
   },
-  pickAv: el => send({ type: "avatar", av: el.dataset.v }),
-  cycleAv: el => { const keys = Object.keys(ACCS), cur = S.room.players[el.dataset.u]?.av; send({ type: "avatar", uid: el.dataset.u, av: keys[(keys.indexOf(cur) + 1) % keys.length] }); },
+  avOpen: el => { S.avEdit = el.dataset.u; render(); },
+  cycleAv: el => { S.avEdit = el.dataset.u; render(); },
+  avClose: () => { S.avEdit = null; render(); },
+  avRandom: el => send({ type: "avatar", uid: el.dataset.u, av: randomLook() }),
+  avSet: el => { const uid = S.avEdit; if (!uid) return; send({ type: "avatar", uid, av: { ...normLook(S.room.players[uid]?.av), [el.dataset.k]: el.dataset.v } }); },
   editOpen: () => { S.editing = true; S.err = ""; render(); },
   editClose: () => { S.editing = false; S.err = ""; render(); },
   peekStart: () => { S.peek = { step: "pick" }; render(); },
