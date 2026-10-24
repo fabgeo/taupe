@@ -171,8 +171,7 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 .netbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: rgba(255,77,141,.1); border: 1px solid rgba(255,77,141,.45); border-radius: 10px; padding: 8px 10px 8px 14px; font-size: .9rem; }
 .netbar button { padding: 7px 12px; font-size: .85rem; }
-.themes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-@media (max-width: 420px) { .themes { grid-template-columns: 1fr; } }
+.themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .theme { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 11px 13px; background: var(--bg); font-weight: 400; }
 .theme b { font-family: var(--f-display); font-size: .95rem; }
 .theme span { font-size: .78rem; color: var(--muted); }
@@ -340,7 +339,8 @@ const THEMES = {
     ["Black Panther","Black Widow","Marvel"],["Thanos","Ultron","méchant"],["Voldemort","Sauron","méchant"],["Hermione","Ginny","sorcier"],
     ["Dumbledore","Gandalf","sorcier"],["Yoda","Obi-Wan","Star Wars"],["Chewbacca","R2-D2","Star Wars"],["Astérix","Obélix","BD"],
     ["Tintin","Spirou","BD"],["Tom","Jerry","dessin animé"],["Bugs Bunny","Daffy Duck","dessin animé"]
-  ] }
+  ] },
+  aleatoire: { label: "Aléatoire", desc: "Un peu de tout, mélangé", mix: true, pairs: [] }
 };
 
 // A small picture for a word: Wikipedia thumbnail for Classique and Film, an emoji for Border.
@@ -448,13 +448,16 @@ function startManche(G, local) {
   const s = G.settings, custom = local ? null : pickCustom(G);
   const ids = shuffle(listPlayers(G).map(p => p.uid).filter(id => !custom || id !== custom.by));
   if (s.theme === "netflix") s.theme = "film";
-  const th = THEMES[s.theme] ? s.theme : "classique", pairs = THEMES[th].pairs;
+  const chosen = THEMES[s.theme] ? s.theme : "classique";
+  const sources = THEMES[chosen].mix ? Object.keys(THEMES).filter(k => !THEMES[k].mix) : [chosen];
   G.usedPairs = (G.usedPairs || []).filter(k => typeof k === "string");
-  let free = pairs.map((_, i) => i).filter(i => !G.usedPairs.includes(th + ":" + i));
-  if (!free.length) { G.usedPairs = G.usedPairs.filter(k => !k.startsWith(th + ":")); free = pairs.map((_, i) => i); }
-  const pi = free[Math.floor(Math.random() * free.length)];
-  G.usedPairs.push(th + ":" + pi);
-  let [a, b, hint] = pairs[pi];
+  const all = sources.flatMap(t => THEMES[t].pairs.map((_, i) => t + ":" + i));
+  let free = all.filter(k => !G.usedPairs.includes(k));
+  if (!free.length) { G.usedPairs = G.usedPairs.filter(k => !all.includes(k)); free = all; }
+  const key = free[Math.floor(Math.random() * free.length)];
+  G.usedPairs.push(key);
+  const [th, pi] = [key.split(":")[0], +key.split(":")[1]];
+  let [a, b, hint] = THEMES[th].pairs[pi];
   if (custom) { G.usedPairs.pop(); custom.used = true; [a, b, hint] = [custom.a, custom.b, custom.hint || "mot perso"]; }
   if (Math.random() < .5) [a, b] = [b, a];
   const roles = {};
@@ -469,7 +472,7 @@ function startManche(G, local) {
   G.lastFirst = order[0];
   ids.forEach(id => { if (G.scores[id] == null) G.scores[id] = 0; });
   Object.assign(G, { status: local ? "deal" : "clues", deal: 0, manche: G.manche + 1, cycle: 1, tour: 1, speaker: 0, toursNow: s.tours, turnStart: Date.now(),
-    order, alive: order.slice(), inRound: ids, roles, words: { civil: a, uc: b, hint, custom: !!custom }, lastOut: null, winner: null,
+    order, alive: order.slice(), inRound: ids, roles, words: { civil: a, uc: b, hint, custom: !!custom, theme: custom ? null : th }, lastOut: null, winner: null,
     referee: custom ? custom.by : null, chat: G.chat || [], lastVotes: null, special, traitor,
     mime: local && s.mime ? (shuffle(ids.filter(id => roles[id].role !== "ghost"))[0] || null) : null });
 }
@@ -1094,7 +1097,7 @@ function slip(uid, key) {
   const who = isLocal() ? `Mot de ${esc(nameOf(uid))}` : "Ton mot";
   if (!S.revealed) return `<button class="slip hidden" data-a="reveal" aria-pressed="false"><span class="label">${who}</span><span class="word">• • • • •</span><span class="sub">Touche pour l'afficher</span></button>`;
   const word = isGhost ? null : r.words[mine.role];
-  const pic = isGhost ? `<span class="pic emoji" aria-hidden="true">👻</span>` : wordPic(word, r.words.hint || "", r.settings.theme);
+  const pic = isGhost ? `<span class="pic emoji" aria-hidden="true">👻</span>` : wordPic(word, r.words.hint || "", r.words.theme || r.settings.theme);
   return `<button class="slip shown withpic ${isGhost ? "ghostslip" : ""}" data-a="reveal" aria-pressed="true">${pic}<span class="txt"><span class="label">${isGhost ? (isLocal() ? esc(nameOf(uid)) + " est le Fantôme" : "Tu es le Fantôme") : who}</span>
     <span class="word">${esc(isGhost ? "Indice : " + r.words.hint : word)}</span>${traitorLine(uid)}<span class="sub">Touche pour cacher</span></span></button>`;
 }
@@ -1296,9 +1299,9 @@ function viewRoundEnd() {
   ${r.winner === "none" ? `<p class="small muted">${r.lastOut && !r.lastOut.tie ? `${esc(nameOf(r.lastOut.uid))} a été éliminé·e à tort et perd ${-POINTS.wrongVote * (r.special === "double" ? 2 : 1)} points.` : "Égalité : personne ne perd de points."}</p>` : ""}
   ${voteReveal()}
   ${r.words.custom && r.referee ? `<p class="small muted">Mots écrits par ${esc(nameOf(r.referee))}${you(r.referee)}, qui a arbitré cette manche.</p>` : ""}
-  <div class="panel"><h3>Les mots de la manche</h3>
-    <div class="words"><div class="c">${wordPic(r.words.civil, r.words.hint, r.settings.theme)}<span class="label">Civils</span><b>${esc(r.words.civil)}</b>${picSource(r.words.civil, r.settings.theme)}</div>
-      <div class="u">${wordPic(r.words.uc, r.words.hint, r.settings.theme)}<span class="label">Taupe</span><b>${r.special === "noTaupe" ? "Personne" : esc(r.words.uc)}</b>${picSource(r.words.uc, r.settings.theme)}</div>
+  <div class="panel"><div class="status"><h3>Les mots de la manche</h3>${THEMES[r.settings.theme]?.mix && r.words.theme ? `<span class="label">Tiré dans : <b>${THEMES[r.words.theme].label}</b></span>` : ""}</div>
+    <div class="words"><div class="c">${wordPic(r.words.civil, r.words.hint, r.words.theme || r.settings.theme)}<span class="label">Civils</span><b>${esc(r.words.civil)}</b>${picSource(r.words.civil, r.words.theme || r.settings.theme)}</div>
+      <div class="u">${wordPic(r.words.uc, r.words.hint, r.words.theme || r.settings.theme)}<span class="label">Taupe</span><b>${r.special === "noTaupe" ? "Personne" : esc(r.words.uc)}</b>${picSource(r.words.uc, r.words.theme || r.settings.theme)}</div>
       <div class="g"><span class="label">Indice Fantôme</span><b>${esc(r.words.hint)}</b></div></div>
     <ul class="players">${Object.entries(r.roles).map(([id, { role }]) => `<li><span class="name">${esc(nameOf(id))}${you(id)}</span><span class="tag ${role}">${ROLE_LABEL[role]}</span></li>`).join("")}</ul></div>
   <div class="panel"><h3>Scores</h3>${scoreList()}</div>
