@@ -289,10 +289,11 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .avbtn:focus-visible { outline: 2px solid var(--accent); }
 .board .who { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
 .vn { display: inline-flex; align-items: center; min-width: 0; }
-.avpick { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.avpick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .avpick button { padding: 4px; aspect-ratio: 1; background: var(--bg); display: grid; place-items: center; border-radius: 12px; }
 .avpick button .mhead { width: 100%; height: auto; }
 .avpick button.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
+.avpick button.taken:not(.on) { opacity: .35; }
 .pic.ghostpic { display: grid; place-items: center; background: rgba(171,156,255,.15); }
 .pic.ghostpic .mhead { width: 120%; margin-top: 10%; }
 /* Manche intro */
@@ -738,20 +739,20 @@ function apply(G, actor, a) {
     case "join": {
       const name = String(a.name || "").trim().slice(0, 20) || "Joueur";
       const p = G.players[actor];
-      G.players[actor] = { uid: actor, name, joinedAt: p ? p.joinedAt : Date.now(), online: true, av: p?.av ? normLook(p.av) : (a.av && typeof a.av === "object" ? normLook(a.av) : randomLook()) };
+      G.players[actor] = { uid: actor, name, joinedAt: p ? p.joinedAt : Date.now(), online: true, av: Number.isInteger(p?.av) ? p.av : freeAvatar(G) };
       return "";
     }
     case "addLocal": {
       const name = String(a.name || "").trim().slice(0, 20);
       if (!name) return "";
       if (listPlayers(G).some(p => norm(p.name) === norm(name))) return "Ce prénom est déjà dans la liste.";
-      const uid = "p" + rid(); G.players[uid] = { uid, name, joinedAt: Date.now(), online: true, av: randomLook() }; return "";
+      const uid = "p" + rid(); G.players[uid] = { uid, name, joinedAt: Date.now(), online: true, av: freeAvatar(G) }; return "";
     }
     case "leave": if (!host) removePlayer(G, actor); return "";
     case "kick": if (host && a.uid !== G.host) removePlayer(G, a.uid); return "";
     case "avatar": {
       const who = host && a.uid && G.players[a.uid] ? a.uid : actor;
-      if (G.players[who] && a.av && typeof a.av === "object") G.players[who].av = normLook(a.av);
+      if (G.players[who] && Number.isInteger(a.av) && AVATARS[a.av]) G.players[who].av = a.av;
       return "";
     }
     case "set": {
@@ -1151,7 +1152,7 @@ const LOOK = {
     blanc: ["Blanc", "#EDEDF2"], rose: ["Rose", "#FF6FB5"], bleu: ["Bleu", "#3DA5FF"], vert: ["Vert", "#4CCB6A"] } },
   eyes: { label: "Yeux", opts: { aucun: ["Rien"], masque: ["Masque"], lunettes: ["Lunettes"], soleil: ["Lunettes de soleil"], coeur: ["Lunettes cœur"], monocle: ["Monocle"], pirate: ["Cache-œil"] } },
   face: { label: "Visage", opts: { aucun: ["Rien"], moustache: ["Moustache"], barbe: ["Barbe"], bouc: ["Bouc"], troisjours: ["Barbe de 3 jours"], joues: ["Joues roses"] } },
-  hat: { label: "Chapeau", opts: { aucun: ["Rien"], casquette: ["Casquette"], bonnet: ["Bonnet"], chapeau: ["Haut-de-forme"], couronne: ["Couronne"], bandana: ["Bandana"],
+  hat: { label: "Chapeau", opts: { aucun: ["Rien"], fez: ["Fez"], casquette: ["Casquette"], bonnet: ["Bonnet"], chapeau: ["Haut-de-forme"], couronne: ["Couronne"], bandana: ["Bandana"],
     casque: ["Casque gaming"], cornes: ["Cornes"], aureole: ["Auréole"], fleur: ["Fleur"] } },
   neck: { label: "Cou", opts: { aucun: ["Rien"], noeud: ["Nœud pap'"], cravate: ["Cravate"], chaine: ["Chaîne en or"], echarpe: ["Écharpe"] } }
 };
@@ -1163,6 +1164,31 @@ function normLook(av) {
   const src = typeof av === "string" ? (OLD_ACC[av] || {}) : (av && typeof av === "object" ? av : { eyes: "masque" });
   for (const k in base) if (src[k] && LOOK[k].opts[src[k]]) base[k] = src[k];
   return base;
+}
+// The 16 moles players choose from.
+const AVATARS = [
+  { fur: "vert", hair: "chignon", hairColor: "vert", eyes: "pirate", hat: "bandana" },
+  { fur: "brun", hair: "longs", hairColor: "blond", eyes: "soleil", hat: "aureole", neck: "chaine" },
+  { fur: "chocolat", hair: "herisse", hairColor: "blanc", eyes: "pirate", neck: "noeud" },
+  { fur: "bleu", hair: "meche", hairColor: "rose", eyes: "masque" },
+  { fur: "brun", hat: "couronne", eyes: "monocle", face: "troisjours", hairColor: "roux" },
+  { fur: "rose", neck: "echarpe" },
+  { fur: "brun", hat: "bandana", eyes: "monocle" },
+  { fur: "chocolat", hair: "longs", hairColor: "vert", eyes: "coeur" },
+  { fur: "brun", hat: "aureole", face: "troisjours", hairColor: "bleu", neck: "echarpe" },
+  { fur: "chocolat", hat: "fez", face: "barbe", hairColor: "noir" },
+  { fur: "rose", eyes: "monocle", face: "moustache", hairColor: "blanc" },
+  { fur: "roux", eyes: "monocle", neck: "chaine" },
+  { fur: "gris", hat: "chapeau", eyes: "pirate" },
+  { fur: "noir", hair: "chignon", hairColor: "brun" },
+  { fur: "creme", hat: "bonnet", hair: "longs", hairColor: "roux", neck: "noeud" },
+  { fur: "brun", hair: "afro", hairColor: "vert", hat: "chapeau" }
+];
+const lookOf = av => Number.isInteger(av) && AVATARS[av] ? AVATARS[av] : av;
+function freeAvatar(G) {
+  const used = Object.values(G.players).map(p => p.av);
+  const free = AVATARS.map((_, i) => i).filter(i => !used.includes(i));
+  return free.length ? free[Math.floor(Math.random() * free.length)] : Math.floor(Math.random() * AVATARS.length);
 }
 function randomLook() {
   const pick = (k, pNone) => { const keys = Object.keys(LOOK[k].opts); return Math.random() < pNone ? keys[0] : keys[1 + Math.floor(Math.random() * (keys.length - 1))]; };
@@ -1215,6 +1241,7 @@ function moleParts({ mask = "on", mood = "calm", ghost = false, look = null } = 
     joues: `<g fill="#FF6F91" opacity=".55"><ellipse cx="84" cy="98" rx="7" ry="4.5"/><ellipse cx="136" cy="98" rx="7" ry="4.5"/></g>`
   };
   const HAT = {
+    fez: `<ellipse cx="110" cy="63" rx="17" ry="4" fill="#A50D26"/><path d="M93 63 L97 39 L123 39 L127 63 Z" fill="#C8102E"/><ellipse cx="110" cy="39" rx="13" ry="3.2" fill="#A50D26"/><path d="M110 39 q11 2 13 17" stroke="#151515" stroke-width="2" fill="none"/><path d="M121 55 l2 9 l3 -9 z" fill="#151515"/>`,
     casquette: `<path d="M77 72 Q110 36 143 72 Z" fill="#E5484D"/><ellipse cx="146" cy="70" rx="20" ry="5" fill="#B7353A"/><circle cx="110" cy="50" r="3" fill="#B7353A"/>`,
     bonnet: `<path d="M76 74 Q78 40 110 40 Q142 40 144 74 Z" fill="#3D7BFF"/><rect x="74" y="66" width="72" height="11" rx="5" fill="#2A5BD0"/><circle cx="110" cy="38" r="7" fill="#F2F4FF"/>`,
     chapeau: `<rect x="93" y="28" width="34" height="34" rx="3" fill="#15151A"/><rect x="93" y="52" width="34" height="6" fill="#E5484D"/><ellipse cx="110" cy="62" rx="30" ry="5.5" fill="#15151A"/>`,
@@ -1260,7 +1287,7 @@ function moleHead(opts = {}, cls = "") {
   return `<svg class="mhead ${cls}" viewBox="50 24 120 112" aria-hidden="true">${moleParts({ mask: "off", ...opts }, id)}</svg>`;
 }
 // A player's avatar: their mole with the accessory they picked.
-const avatar = (uid, cls = "") => `<span class="av ${cls}">${moleHead({ look: S.room?.players?.[uid]?.av })}</span>`;
+const avatar = (uid, cls = "") => `<span class="av ${cls}">${moleHead({ look: lookOf(S.room?.players?.[uid]?.av) })}</span>`;
 const errLine = () => S.err ? `<p class="err">${esc(S.err)}</p>` : "";
 
 function viewHome() {
@@ -1413,26 +1440,17 @@ function viewLobby() {
 }
 function avatarPanel() {
   const me = S.room.players[S.uid]; if (!me) return "";
-  return `<div class="panel avpanel">${avatar(S.uid, "xl")}<div class="stack"><h2>Ta taupe</h2>
-    <p class="small muted">Pelage, coiffure, lunettes, barbe, chapeau… Crée la tienne.</p>
-    <div class="row"><button class="primary" data-a="avOpen" data-u="${esc(S.uid)}">Personnaliser</button><button class="ghost" data-a="avRandom" data-u="${esc(S.uid)}">🎲 Au hasard</button></div></div></div>`;
+  return `<div class="panel"><h2>Ta taupe</h2>${avatarGrid(S.uid)}</div>`;
 }
-function viewAvEdit() {
-  const uid = S.avEdit, p = S.room.players[uid], look = normLook(p.av);
-  const row = k => {
-    const cat = LOOK[k];
-    const items = Object.entries(cat.opts).map(([v, o]) => {
-      const on = look[k] === v;
-      const preview = k === "hairColor" ? `<i class="swatch" style="background:${o[1]}"></i>` : moleHead({ look: { ...look, [k]: v } });
-      return `<button class="${on ? "on" : ""} ${k === "hairColor" ? "sw" : ""}" data-a="avSet" data-k="${k}" data-v="${v}" aria-pressed="${on}" title="${o[0]}" aria-label="${cat.label} : ${o[0]}">${preview}<span>${o[0]}</span></button>`;
-    }).join("");
-    return `<div class="avrow"><span class="label">${cat.label}</span><div class="avopts">${items}</div></div>`;
-  };
+function avatarGrid(uid) {
+  const r = S.room, mine = r.players[uid]?.av, taken = Object.values(r.players).filter(p => p.uid !== uid).map(p => p.av);
+  return `<div class="avpick">${AVATARS.map((look, i) => `<button class="${mine === i ? "on" : ""} ${taken.includes(i) ? "taken" : ""}" data-a="pickAv" data-u="${esc(uid)}" data-v="${i}" aria-pressed="${mine === i}" aria-label="Taupe ${i + 1}${taken.includes(i) ? " (déjà prise)" : ""}">${moleHead({ look })}</button>`).join("")}</div>`;
+}
+function viewAvPick() {
+  const uid = S.avEdit, p = S.room.players[uid];
   return `${bar()}
-  <div class="panel avedit"><div class="avbig">${moleHead({ look })}</div><h2>${isLocal() ? "Taupe de " + esc(p.name) : "Ta taupe"}</h2>
-    <div class="row"><button class="ghost" data-a="avRandom" data-u="${esc(uid)}">🎲 Au hasard</button><button class="primary" data-a="avClose">Terminé</button></div></div>
-  <div class="panel">${Object.keys(LOOK).map(row).join("")}</div>
-  <button class="primary" data-a="avClose">Terminé</button>`;
+  <div class="panel"><div class="status"><h2>Taupe de ${esc(p.name)}</h2>${avatar(uid, "lg")}</div>${avatarGrid(uid)}
+    <button class="primary" data-a="avClose">Terminé</button></div>`;
 }
 function traitorLine(uid) {
   const r = S.room;
@@ -1763,7 +1781,7 @@ function render() {
     if (S.editing) screen = "edit";
     if (S.avEdit && !S.room.players[S.avEdit]) S.avEdit = null;
     if (S.avEdit) screen = "av";
-    html = S.avEdit ? viewAvEdit() : S.editing ? viewEdit() : S.peek ? viewPeek() : ({ lobby: viewLobby, deal: viewDeal, clues: viewClues, vote: viewVote, result: viewResult, ghostGuess: viewGhostGuess, roundEnd: viewRoundEnd, final: viewFinal }[S.room.status] || viewLobby)();
+    html = S.avEdit ? viewAvPick() : S.editing ? viewEdit() : S.peek ? viewPeek() : ({ lobby: viewLobby, deal: viewDeal, clues: viewClues, vote: viewVote, result: viewResult, ghostGuess: viewGhostGuess, roundEnd: viewRoundEnd, final: viewFinal }[S.room.status] || viewLobby)();
   }
   const chatEl = document.getElementById("chatList"), stick = !chatEl || chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 40;
   app.innerHTML = html;
@@ -1839,11 +1857,9 @@ const ACTIONS = {
     if (!S.confirmSkip) { S.confirmSkip = true; render(); setTimeout(() => { if (S.confirmSkip) { S.confirmSkip = false; render(); } }, 4000); return; }
     S.confirmSkip = false; S.editing = false; send({ type: "skipManche" });
   },
-  avOpen: el => { S.avEdit = el.dataset.u; render(); },
+  pickAv: el => send({ type: "avatar", uid: el.dataset.u, av: +el.dataset.v }),
   cycleAv: el => { S.avEdit = el.dataset.u; render(); },
   avClose: () => { S.avEdit = null; render(); },
-  avRandom: el => send({ type: "avatar", uid: el.dataset.u, av: randomLook() }),
-  avSet: el => { const uid = S.avEdit; if (!uid) return; send({ type: "avatar", uid, av: { ...normLook(S.room.players[uid]?.av), [el.dataset.k]: el.dataset.v } }); },
   editOpen: () => { S.editing = true; S.err = ""; render(); },
   editClose: () => { S.editing = false; S.err = ""; render(); },
   peekStart: () => { S.peek = { step: "pick" }; render(); },
