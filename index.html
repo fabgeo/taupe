@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07070A">
 <title>Taupe</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='60 50 100 80'%3E%3Cpath d='M56 175C56 104 72 60 110 60s54 44 54 115Z' fill='%235B4840'/%3E%3Cpath d='M74 80c8-9 21-10 36-5 15-5 28-4 36 5-2 11-10 16-19 16-7 0-11-3-17-8-6 5-10 8-17 8-9 0-17-5-19-16z' fill='%23F5B83D'/%3E%3Cellipse cx='94' cy='83' rx='5.5' ry='3.8'/%3E%3Cellipse cx='126' cy='83' rx='5.5' ry='3.8'/%3E%3Cellipse cx='110' cy='97' rx='9' ry='7' fill='%23FF8FA3'/%3E%3C/svg%3E">
 <meta name="description" content="Taupe : le jeu du mot secret entre amis, en ligne sans compte ou sur un seul téléphone.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -68,18 +69,16 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .brand .logo h1 { padding-bottom: 6px; }
 .brand .mole { width: clamp(80px, 24vw, 150px); height: auto; flex: none; overflow: visible; }
 .brand .mole.flip { transform: scaleX(-1); }
-.brand .mole.flip .mole-rise { animation-delay: .55s, 1.9s; }
-.brand .mole.flip .mole-paws { animation-delay: 1.35s; }
+#app[data-fresh] .brand .mole.flip .mole-rise { animation-delay: .55s, 1.9s; }
+#app[data-fresh] .brand .mole.flip .mole-paws { animation-delay: 1.35s; }
 .brand .mole.flip .mole-eye { animation-delay: 3.4s; }
 .brand > p { text-align: center; }
-.mole-rise { transform-box: view-box; animation: molerise 1.1s cubic-bezier(.2, .9, .25, 1.15) .25s both, molebob 4s ease-in-out 1.6s infinite; }
-.mole-paws { animation: molepaws .35s ease-out 1.05s both; }
 .mole-eye { animation: moleblink 5s step-end 2s infinite; }
 @keyframes molerise { from { transform: translateY(72px); } to { transform: translateY(0); } }
 @keyframes molebob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
 @keyframes molepaws { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes moleblink { 0%, 94%, 100% { opacity: 1; } 95%, 99% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .mole-rise, .mole-paws, .mole-eye { animation: none; } }
+
 .brand h1 .c { color: var(--accent); }
 .modes { display: grid; gap: 12px; }
 .mode-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
@@ -262,6 +261,79 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .set > button.ghost { width: auto; height: auto; margin-top: 4px; padding: 8px 12px; font-size: .85rem; }
 .chat li.sep { background: transparent; color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; text-align: center; padding: 4px 0; }
 .topbtns { gap: 8px; }
+/* Mole animations only play right after a screen appears (data-fresh), loops always */
+.mole-rise, .mole-paws { transform-box: view-box; }
+#app[data-fresh] .mole-rise { animation: molerise 1.1s cubic-bezier(.2, .9, .25, 1.15) .2s both, molebob 4s ease-in-out 1.6s infinite; }
+#app:not([data-fresh]) .mole-rise { animation: molebob 4s ease-in-out infinite; }
+#app[data-fresh] .mole-paws { animation: molepaws .35s ease-out 1s both; }
+.mask-fall { transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; }
+#app[data-fresh] .mask-fall { animation: maskfall 1.3s ease-in 1.3s both; }
+@keyframes maskfall { 0% { opacity: 1; transform: none; } 30% { opacity: 1; transform: translateY(-4px) rotate(-6deg); } 100% { opacity: 0; transform: translateY(70px) rotate(38deg); } }
+.laughing .mole-rise { animation: molelaugh .5s ease-in-out infinite alternate !important; }
+@keyframes molelaugh { from { transform: translateY(0) rotate(-2deg); } to { transform: translateY(-3px) rotate(2deg); } }
+.reveal-mole { width: 150px; height: auto; margin-bottom: -6px; }
+.reveal-mole.small-mole { width: 110px; }
+.mole.peek .mole-rise { animation: molepeek 3.2s ease-in-out infinite !important; }
+@keyframes molepeek { 0%, 12% { transform: translateY(72px); } 30%, 70% { transform: translateY(0); } 88%, 100% { transform: translateY(72px); } }
+.mole.peek .mole-paws { animation: molepeekpaws 3.2s ease-in-out infinite !important; }
+@keyframes molepeekpaws { 0%, 22% { opacity: 0; } 32%, 66% { opacity: 1; } 76%, 100% { opacity: 0; } }
+.reveal .mole.peek { width: 120px; height: auto; }
+.waitline { display: flex; align-items: center; gap: 10px; }
+.mole.tiny { width: 64px; height: auto; flex: none; }
+/* Avatars */
+.av { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--raise); overflow: hidden; flex: none; vertical-align: middle; }
+.av .mhead { width: 118%; height: auto; margin-top: 8%; }
+.av.sm { width: 24px; height: 24px; margin-right: 6px; }
+.av.lg { width: 64px; height: 64px; }
+.avbtn { padding: 0; border: 0; background: none; border-radius: 50%; line-height: 0; }
+.avbtn:focus-visible { outline: 2px solid var(--accent); }
+.board .who { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
+.vn { display: inline-flex; align-items: center; min-width: 0; }
+.avpick { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.avpick button { padding: 4px; aspect-ratio: 1; background: var(--bg); display: grid; place-items: center; border-radius: 12px; }
+.avpick button .mhead { width: 100%; height: auto; }
+.avpick button.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
+.pic.ghostpic { display: grid; place-items: center; background: rgba(171,156,255,.15); }
+.pic.ghostpic .mhead { width: 120%; margin-top: 10%; }
+/* Manche intro */
+.intro { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; pointer-events: none; background: rgba(7, 7, 10, .55); animation: introfade 1.9s ease both; }
+.intro-card { background: var(--surface); border: 1px solid var(--accent); border-radius: 18px; padding: 18px 34px 0; text-align: center; box-shadow: 0 20px 60px -20px var(--glow); overflow: hidden; }
+.intro-card b { display: block; font-family: var(--f-display); font-weight: 900; font-size: 3.4rem; color: var(--accent); line-height: 1; }
+.intro-card small { font-size: 1.1rem; color: var(--muted); }
+.intro-card .intro-mole { width: 130px; height: auto; display: block; margin: 4px auto -14px; }
+.intro .mole-rise { animation: molerise .9s cubic-bezier(.2, .9, .25, 1.15) .25s both; }
+@keyframes introfade { 0% { opacity: 0; transform: scale(.9); } 15%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: scale(1.04); } }
+/* Podium */
+.podium-panel { overflow: hidden; }
+.podium-wrap { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 4px; width: 100%; }
+.thrower .mole { width: 100%; max-width: 110px; height: auto; display: block; }
+.thrower { min-width: 0; }
+.thrower.left { justify-self: start; } .thrower.right { justify-self: end; }
+.podium { display: flex; align-items: flex-end; gap: 6px; }
+.step { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 74px; min-width: 0; }
+.step b { font-size: .8rem; overflow-wrap: anywhere; text-align: center; }
+.step span { font-family: var(--f-mono); font-size: .72rem; color: var(--muted); }
+.step .block { width: 100%; border-radius: 8px 8px 0 0; background: var(--raise); border: 1px solid var(--line); display: grid; place-items: center; font-family: var(--f-display); font-weight: 900; color: var(--muted); }
+.step.s1 .block { height: 70px; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.step.s2 .block { height: 50px; } .step.s3 .block { height: 36px; }
+@media (max-width: 420px) { .step { width: 60px; } .step b { font-size: .72rem; } .av.lg { width: 50px; height: 50px; } .thrower .mole { max-width: 70px; } .podium { gap: 4px; } }
+.grass { position: fixed; z-index: 70; width: 4px; height: 13px; border-radius: 3px 3px 1px 1px; pointer-events: none; animation: grassfly 1.6s cubic-bezier(.25, .6, .4, 1) forwards; }
+@keyframes grassfly { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 60% { opacity: 1; } 100% { transform: translate(var(--dx), calc(var(--dy) + 220px)) rotate(var(--rot)); opacity: 0; } }
+/* Ground strip */
+#app { position: relative; z-index: 1; }
+body { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important; }
+.ground { position: fixed; left: 0; right: 0; bottom: 0; height: calc(46px + env(safe-area-inset-bottom, 0px)); z-index: 0; pointer-events: none;
+  background: radial-gradient(circle at 10% 30%, #4A3329 0 3px, transparent 4px), radial-gradient(circle at 70% 60%, #2C1E18 0 2px, transparent 3px), linear-gradient(180deg, #2A1C16, #1A110D);
+  background-size: 120px 46px, 90px 46px, auto; border-top: 2px solid #3A2820; }
+.ground .hole { position: absolute; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: 84px; transform: translateX(-50%); }
+.ground .mole { width: 84px; height: auto; display: block; }
+.ground .mole-rise { transform: translateY(80px); animation: none !important; transition: transform .45s cubic-bezier(.2, .9, .25, 1.2); }
+.ground .mole-paws { opacity: 0; transition: opacity .2s; }
+.ground .hole.pop .mole-rise { transform: translateY(0); }
+.ground .hole.pop .mole-paws { opacity: 1; transition-delay: .3s; }
+/* Cards like small wooden boards */
+.panel { background: repeating-linear-gradient(90deg, rgba(255,255,255,.014) 0 2px, transparent 2px 11px), linear-gradient(180deg, rgba(255,255,255,.025), transparent 40%), var(--surface); border-top: 2px solid rgba(139, 94, 60, .55); }
+@media (prefers-reduced-motion: reduce) { .mole-rise, .mole-paws, .mask-fall, .mole-eye { animation: none !important; } .mask-fall { opacity: 0; } }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -650,17 +722,22 @@ function apply(G, actor, a) {
     case "join": {
       const name = String(a.name || "").trim().slice(0, 20) || "Joueur";
       const p = G.players[actor];
-      G.players[actor] = { uid: actor, name, joinedAt: p ? p.joinedAt : Date.now(), online: true };
+      G.players[actor] = { uid: actor, name, joinedAt: p ? p.joinedAt : Date.now(), online: true, av: p?.av || (ACCS[a.av] ? a.av : nextFreeAcc(G)) };
       return "";
     }
     case "addLocal": {
       const name = String(a.name || "").trim().slice(0, 20);
       if (!name) return "";
       if (listPlayers(G).some(p => norm(p.name) === norm(name))) return "Ce prénom est déjà dans la liste.";
-      const uid = "p" + rid(); G.players[uid] = { uid, name, joinedAt: Date.now(), online: true }; return "";
+      const uid = "p" + rid(); G.players[uid] = { uid, name, joinedAt: Date.now(), online: true, av: nextFreeAcc(G) }; return "";
     }
     case "leave": if (!host) removePlayer(G, actor); return "";
     case "kick": if (host && a.uid !== G.host) removePlayer(G, a.uid); return "";
+    case "avatar": {
+      const who = host && a.uid && G.players[a.uid] ? a.uid : actor;
+      if (G.players[who] && ACCS[a.av]) G.players[who].av = a.av;
+      return "";
+    }
     case "set": {
       if (!host) return "";
       const lim = { uc: [0, 6], ghost: [0, 4], manches: [1, 10], tours: [1, 5] }[a.key];
@@ -1047,30 +1124,67 @@ document.addEventListener("visibilitychange", () => {
 /* ================= Rendering ================= */
 const MASK = `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M4 18c6-5 14-6 20-2 6-4 14-3 20 2-1 9-6 15-13 15-3 0-5-2-7-5-2 3-4 5-7 5-7 0-12-6-13-15z" fill="#F5B83D"/>
   <ellipse cx="15" cy="22" rx="4.5" ry="3" fill="#07070A"/><ellipse cx="33" cy="22" rx="4.5" ry="3" fill="#07070A"/></svg>`;
-// The mascot: a masked mole popping its head out of a hole.
-const MOLE = (id, flip) => `<svg class="mole ${flip ? "flip" : ""}" viewBox="0 0 220 170" ${flip ? 'aria-hidden="true"' : 'role="img" aria-label="Une taupe masquée sort de son trou"'}>
-  <defs><clipPath id="moleHole${id}"><rect x="0" y="0" width="220" height="129"/></clipPath>
-    <radialGradient id="moleFur${id}" cx="50%" cy="30%" r="70%"><stop offset="0" stop-color="#6E5A51"/><stop offset="1" stop-color="#3E302A"/></radialGradient></defs>
-  <ellipse cx="110" cy="129" rx="60" ry="13" fill="#140D0A"/>
-  <g clip-path="url(#moleHole${id})"><g class="mole-rise">
-    <path d="M56 175 C56 104 72 60 110 60 C148 60 164 104 164 175 Z" fill="url(#moleFur${id})"/>
-    <path d="M86 175 C86 128 95 106 110 106 C125 106 134 128 134 175 Z" fill="#8A7268" opacity=".55"/>
-    <ellipse cx="110" cy="99" rx="17" ry="12" fill="#8A7268"/>
+// The mascot. moleParts draws the mole (fur, mask, face, accessory); moleScene puts it in its hole; moleHead crops it as an avatar.
+const ACCS = { masque: "Masque", lunettes: "Lunettes", casquette: "Casquette", noeud: "Nœud pap'", couronne: "Couronne",
+  bandana: "Bandana", casque: "Casque gaming", chapeau: "Haut-de-forme", fleur: "Fleur", moustache: "Moustache" };
+let moleSeq = 0;
+function moleParts({ mask = "on", mood = "calm", ghost = false, acc = null } = {}, id) {
+  const fur = ghost ? ["#FBFAFF", "#B9B2E8", "#FFFFFF"] : ["#6E5A51", "#3E302A", "#8A7268"];
+  const eyes = mood === "laugh" ? `<path d="M88 84 q6-6 12 0 M120 84 q6-6 12 0" stroke="#07070A" stroke-width="2.6" fill="none" stroke-linecap="round"/>`
+    : mood === "surprised" ? `<circle cx="94" cy="83" r="5.2" fill="#07070A"/><circle cx="126" cy="83" r="5.2" fill="#07070A"/><circle cx="95.8" cy="81.5" r="1.6" fill="#fff"/><circle cx="127.8" cy="81.5" r="1.6" fill="#fff"/>`
+    : `<ellipse cx="94" cy="83" rx="4" ry="3.6" fill="#07070A"/><ellipse cx="126" cy="83" rx="4" ry="3.6" fill="#07070A"/><circle class="mole-eye" cx="95.3" cy="82" r="1.1" fill="#fff"/><circle class="mole-eye" cx="127.3" cy="82" r="1.1" fill="#fff"/>`;
+  const maskShape = `<path d="M74 80 c8-9 21-10 36-5 15-5 28-4 36 5 -2 11-10 16-19 16 -7 0-11-3-17-8 -6 5-10 8-17 8 -9 0-17-5-19-16z" fill="#F5B83D"/>
+    <ellipse cx="94" cy="83" rx="5.5" ry="3.8" fill="#07070A"/><ellipse cx="126" cy="83" rx="5.5" ry="3.8" fill="#07070A"/>`;
+  const masked = mask === "on" || acc === "masque";
+  const face = masked ? `${maskShape}${mood === "laugh" ? "" : `<circle class="mole-eye" cx="95.5" cy="82" r="1.2" fill="#fff"/><circle class="mole-eye" cx="127.5" cy="82" r="1.2" fill="#fff"/>`}`
+    : `${eyes}${mask === "fall" ? `<g class="mask-fall">${maskShape}</g>` : ""}`;
+  const mouth = mood === "laugh" ? `<path d="M99 108 q11 14 22 0 z" fill="#3A1F1F"/><path d="M103 111 q7 5 14 0" fill="#FF8FA3"/>`
+    : mood === "surprised" ? `<ellipse cx="110" cy="113" rx="5" ry="6" fill="#3A1F1F"/>`
+    : `<path d="M101 112 q9 6 18 0" stroke="${ghost ? "#8C84C4" : "#3E302A"}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  const A = {
+    lunettes: `<g fill="rgba(255,255,255,.14)" stroke="#16161C" stroke-width="3"><circle cx="94" cy="83" r="9"/><circle cx="126" cy="83" r="9"/></g><path d="M103 82 h14" stroke="#16161C" stroke-width="3"/>`,
+    casquette: `<path d="M77 72 Q110 36 143 72 Z" fill="#E5484D"/><ellipse cx="146" cy="70" rx="20" ry="5" fill="#B7353A"/><circle cx="110" cy="50" r="3" fill="#B7353A"/>`,
+    noeud: `<path d="M95 115 L110 121 L95 127 Z M125 115 L110 121 L125 127 Z" fill="#E5484D"/><circle cx="110" cy="121" r="3.2" fill="#B7353A"/>`,
+    couronne: `<path d="M88 64 L91 44 L101 56 L110 40 L119 56 L129 44 L132 64 Z" fill="#F5B83D" stroke="#C98D17" stroke-width="2" stroke-linejoin="round"/><circle cx="110" cy="56" r="2.6" fill="#E5484D"/>`,
+    bandana: `<path d="M70 76 Q110 56 150 76 L150 68 Q110 48 70 68 Z" fill="#E5484D"/><path d="M150 70 l12 -6 l-2 10 z M150 72 l10 8 l-12 0 z" fill="#B7353A"/>`,
+    casque: `<path d="M68 88 Q68 44 110 44 Q152 44 152 88" stroke="#22232B" stroke-width="6" fill="none"/><rect x="60" y="78" width="14" height="22" rx="5" fill="#3DD6FF"/><rect x="146" y="78" width="14" height="22" rx="5" fill="#3DD6FF"/>`,
+    chapeau: `<rect x="93" y="28" width="34" height="34" rx="3" fill="#15151A"/><rect x="93" y="52" width="34" height="6" fill="#E5484D"/><ellipse cx="110" cy="62" rx="30" ry="5.5" fill="#15151A"/>`,
+    fleur: `<g transform="translate(142 64)"><circle cx="0" cy="-6" r="5" fill="#FF8FC8"/><circle cx="6" cy="-2" r="5" fill="#FF8FC8"/><circle cx="4" cy="5" r="5" fill="#FF8FC8"/><circle cx="-4" cy="5" r="5" fill="#FF8FC8"/><circle cx="-6" cy="-2" r="5" fill="#FF8FC8"/><circle r="3.4" fill="#F5B83D"/></g>`,
+    moustache: `<path d="M110 102 q-9 -5 -18 2 q9 3 18 -1 q9 4 18 1 q-9 -7 -18 -2z" fill="#2A1F1A"/>`
+  };
+  return `<g ${ghost ? 'opacity=".9"' : ""}>
+    <path d="M56 175 C56 104 72 60 110 60 C148 60 164 104 164 175 Z" fill="url(#mf${id})"/>
+    <path d="M86 175 C86 128 95 106 110 106 C125 106 134 128 134 175 Z" fill="${fur[2]}" opacity=".55"/>
+    <ellipse cx="110" cy="99" rx="17" ry="12" fill="${fur[2]}"/>
     <ellipse cx="110" cy="93" rx="8.5" ry="6.5" fill="#FF8FA3"/><ellipse cx="107" cy="91" rx="2.4" ry="1.6" fill="#FFD1DA"/>
-    <g stroke="#C9B3A9" stroke-width="1.4" stroke-linecap="round" opacity=".8">
-      <path d="M93 99 L72 95"/><path d="M93 103 L73 106"/><path d="M127 99 L148 95"/><path d="M127 103 L147 106"/></g>
-    <path d="M74 80 c8-9 21-10 36-5 15-5 28-4 36 5 -2 11-10 16-19 16 -7 0-11-3-17-8 -6 5-10 8-17 8 -9 0-17-5-19-16z" fill="#F5B83D"/>
-    <ellipse cx="94" cy="83" rx="5.5" ry="3.8" fill="#07070A"/><ellipse cx="126" cy="83" rx="5.5" ry="3.8" fill="#07070A"/>
-    <circle class="mole-eye" cx="95.5" cy="82" r="1.2" fill="#fff"/><circle class="mole-eye" cx="127.5" cy="82" r="1.2" fill="#fff"/>
-    <path d="M101 112 q9 6 18 0" stroke="#3E302A" stroke-width="2" fill="none" stroke-linecap="round"/>
-  </g></g>
+    <g stroke="${ghost ? "#C9C2F0" : "#C9B3A9"}" stroke-width="1.4" stroke-linecap="round" opacity=".8"><path d="M93 99 L72 95"/><path d="M93 103 L73 106"/><path d="M127 99 L148 95"/><path d="M127 103 L147 106"/></g>
+    ${face}${mouth}${acc && acc !== "masque" && A[acc] ? A[acc] : ""}
+  </g>
+  <defs><radialGradient id="mf${id}" cx="50%" cy="30%" r="70%"><stop offset="0" stop-color="${fur[0]}"/><stop offset="1" stop-color="${fur[1]}"/></radialGradient></defs>`;
+}
+function moleScene(opts = {}, cls = "", label = "") {
+  const id = "s" + (++moleSeq);
+  return `<svg class="mole ${cls}" viewBox="0 0 220 170" ${label ? `role="img" aria-label="${esc(label)}"` : 'aria-hidden="true"'}>
+  <defs><clipPath id="mh${id}"><rect x="0" y="0" width="220" height="129"/></clipPath></defs>
+  <ellipse cx="110" cy="129" rx="60" ry="13" fill="#140D0A"/>
+  <g clip-path="url(#mh${id})"><g class="mole-rise">${moleParts(opts, id)}</g></g>
   <path d="M28 141 C38 119 70 117 110 121 C150 117 182 119 192 141 C176 154 44 154 28 141 Z" fill="#3A2820"/>
   <circle cx="44" cy="134" r="5" fill="#4A3329"/><circle cx="178" cy="136" r="6" fill="#4A3329"/><circle cx="160" cy="146" r="3.5" fill="#2C1E18"/><circle cx="62" cy="147" r="3" fill="#2C1E18"/>
-  <g class="mole-paws">
-    <ellipse cx="80" cy="125" rx="13" ry="8" fill="#FF9EB0"/><ellipse cx="140" cy="125" rx="13" ry="8" fill="#FF9EB0"/>
-    <g stroke="#F3E3DA" stroke-width="2" stroke-linecap="round"><path d="M72 128 l-2 5"/><path d="M78 130 l-1 5"/><path d="M84 130 l0 5"/><path d="M136 130 l0 5"/><path d="M142 130 l1 5"/><path d="M148 128 l2 5"/></g>
-  </g>
+  <g class="mole-paws"><ellipse cx="80" cy="125" rx="13" ry="8" fill="#FF9EB0"/><ellipse cx="140" cy="125" rx="13" ry="8" fill="#FF9EB0"/>
+    <g stroke="#F3E3DA" stroke-width="2" stroke-linecap="round"><path d="M72 128 l-2 5"/><path d="M78 130 l-1 5"/><path d="M84 130 l0 5"/><path d="M136 130 l0 5"/><path d="M142 130 l1 5"/><path d="M148 128 l2 5"/></g></g>
 </svg>`;
+}
+const MOLE = (id, flip) => moleScene({}, flip ? "flip" : "", flip ? "" : "Une taupe masquée sort de son trou");
+function moleHead(opts = {}, cls = "") {
+  const id = "h" + (++moleSeq);
+  return `<svg class="mhead ${cls}" viewBox="50 24 120 112" aria-hidden="true">${moleParts({ mask: "off", ...opts }, id)}</svg>`;
+}
+// A player's avatar: their mole with the accessory they picked.
+const avatar = (uid, cls = "") => `<span class="av ${cls}">${moleHead({ acc: S.room?.players?.[uid]?.av || "masque" })}</span>`;
+function nextFreeAcc(G) {
+  const used = Object.values(G.players).map(p => p.av);
+  return Object.keys(ACCS).find(k => !used.includes(k)) || Object.keys(ACCS)[Object.keys(G.players).length % Object.keys(ACCS).length];
+}
 const errLine = () => S.err ? `<p class="err">${esc(S.err)}</p>` : "";
 
 function viewHome() {
@@ -1169,7 +1283,7 @@ function settingsPanel() {
     </div>
     ${S.room.status !== "lobby" ? (prob ? `<p class="err">${esc(prob)}</p>` : "")
       : h ? `<button class="primary" data-a="start" ${prob ? "disabled" : ""}>Lancer la partie</button>
-      ${prob ? `<p class="small muted">${esc(prob)}</p>` : ""}` : `<p class="small muted">En attente du lancement par l'hôte…</p>`}
+      ${prob ? `<p class="small muted">${esc(prob)}</p>` : ""}` : `<div class="waitline">${moleScene({}, "peek tiny")}<p class="small muted">En attente du lancement par l'hôte…</p></div>`}
     ${errLine()}</div>`;
 }
 const kickBtn = uid => `<button class="ghost x ${S.confirmKick === uid ? "danger-soft" : ""}" data-a="kick" data-u="${esc(uid)}">${S.confirmKick === uid ? (isLocal() ? "Confirmer ?" : "Exclure ?") : (isLocal() ? "Retirer" : "Exclure")}</button>`;
@@ -1184,7 +1298,7 @@ function viewEdit() {
   <div class="panel"><div class="status"><h2>Joueurs</h2><span class="label"><b>${ps.length}</b> ${isLocal() ? "autour de la table" : "dans le salon"}</span></div>
     ${isLocal() ? `<div class="row"><input type="text" id="newPlayer" class="grow" maxlength="20" placeholder="Prénom du joueur à ajouter" data-enter="addPlayer" autocomplete="off">
       <button data-a="addPlayer">Ajouter</button></div>` : `<p class="small muted">Pour ajouter quelqu'un, envoie-lui le lien du salon : il rejoint et joue dès la manche suivante. « Exclure » renvoie un joueur hors du salon.</p>`}
-    <ul class="players">${ps.map(p => `<li><span class="dot ${p.online === false ? "off" : ""}"></span><span class="name">${esc(p.name)}${you(p.uid)}</span>
+    <ul class="players">${ps.map(p => `<li><span class="dot ${p.online === false ? "off" : ""}"></span>${avatar(p.uid)}<span class="name">${esc(p.name)}${you(p.uid)}</span>
       <span class="tag">${!playing(p.uid) ? "Manche suivante" : out(p.uid) ? "Éliminé·e" : "En jeu"}</span>
       ${p.uid !== S.uid && !(S.mode === "host" && p.uid === r.host) ? `${kickBtn(p.uid)}` : ""}</li>`).join("")}</ul>
     <p class="small muted">Un joueur ajouté entre dans la partie à la manche suivante. Un joueur retiré quitte tout de suite la manche en cours.</p></div>
@@ -1198,7 +1312,7 @@ function viewLobby() {
   <div class="panel"><div class="status"><h2>Joueurs</h2><span class="label"><b>${ps.length}</b> autour de la table</span></div>
     <div class="row"><input type="text" id="newPlayer" class="grow" maxlength="20" placeholder="Prénom du joueur" data-enter="addPlayer" autocomplete="off">
       <button data-a="addPlayer">Ajouter</button></div>
-    ${ps.length ? `<ul class="players">${ps.map(p => `<li><span class="dot"></span><span class="name">${esc(p.name)}</span>
+    ${ps.length ? `<ul class="players">${ps.map(p => `<li><button class="avbtn" data-a="cycleAv" data-u="${esc(p.uid)}" aria-label="Changer la taupe de ${esc(p.name)}">${avatar(p.uid)}</button><span class="name">${esc(p.name)}</span>
       ${kickBtn(p.uid)}</li>`).join("")}</ul>`
       : `<p class="small muted">Ajoute au moins 3 joueurs. L'ordre de parole sera tiré au hasard.</p>`}</div>
   ${settingsPanel()}`;
@@ -1214,11 +1328,17 @@ function viewLobby() {
     <p class="small muted">Pas besoin de compte : tes amis ouvrent le lien, choisissent un pseudo et rejoignent.${S.mode === "host" ? " Ton appareil héberge la partie : garde cette page ouverte jusqu'à la fin." : ""}</p></div>
   <div class="panel"><div class="status"><h2>Joueurs</h2><span class="label"><b>${ps.length}</b> dans le salon</span></div>
     <ul class="players">${ps.map(p => `<li><span class="dot ${p.online === false ? "off" : ""}" title="${p.online === false ? "Déconnecté" : "En ligne"}"></span>
-      <span class="name">${esc(p.name)}${you(p.uid)}</span>
+      ${avatar(p.uid)}<span class="name">${esc(p.name)}${you(p.uid)}</span>
       ${p.uid === S.room.host ? `<span class="tag host">Hôte</span>` : ""}
       ${isHost() && p.uid !== S.uid ? `${kickBtn(p.uid)}` : ""}</li>`).join("")}</ul></div>
+  ${avatarPanel()}
   ${customPanel()}
   ${settingsPanel()}`;
+}
+function avatarPanel() {
+  const me = S.room.players[S.uid]; if (!me) return "";
+  return `<div class="panel"><div class="status"><h2>Ta taupe</h2><span class="label">${ACCS[me.av] || ""}</span></div>
+    <div class="avpick">${Object.entries(ACCS).map(([k, label]) => `<button class="${me.av === k ? "on" : ""}" data-a="pickAv" data-v="${k}" aria-label="${label}" title="${label}">${moleHead({ acc: k })}</button>`).join("")}</div></div>`;
 }
 function traitorLine(uid) {
   const r = S.room;
@@ -1234,7 +1354,7 @@ function slip(uid, key) {
   const who = isLocal() ? `Mot de ${esc(nameOf(uid))}` : "Ton mot";
   if (!S.revealed) return `<button class="slip hidden" data-a="reveal" aria-pressed="false"><span class="label">${who}</span><span class="word">• • • • •</span><span class="sub">Touche pour l'afficher</span></button>`;
   const word = isGhost ? null : r.words[mine.role];
-  const pic = isGhost ? `<span class="pic emoji" aria-hidden="true">👻</span>` : wordPic(word, r.words.hint || "", r.words.theme || r.settings.theme);
+  const pic = isGhost ? `<span class="pic ghostpic">${moleHead({ ghost: true })}</span>` : wordPic(word, r.words.hint || "", r.words.theme || r.settings.theme);
   return `<button class="slip shown withpic ${isGhost ? "ghostslip" : ""}" data-a="reveal" aria-pressed="true">${pic}<span class="txt"><span class="label">${isGhost ? (isLocal() ? esc(nameOf(uid)) + " est le Fantôme" : "Tu es le Fantôme") : who}</span>
     <span class="word">${esc(isGhost ? "Indice : " + r.words.hint : word)}</span>${traitorLine(uid)}<span class="sub">Touche pour cacher</span></span></button>`;
 }
@@ -1294,7 +1414,7 @@ function board() {
   const mc = r.clues.filter(c => c.manche === r.manche).sort((a, b) => a.cycle - b.cycle || a.tour - b.tour);
   return `<ul class="board">${seq.map(id => {
     const out = !r.alive.includes(id), cs = mc.filter(c => c.uid === id), role = r.roles?.[id]?.role;
-    return `<li class="${id === speaking ? "turn" : ""} ${out ? "out" : ""}"><span class="who">${esc(nameOf(id))}${you(id)}
+    return `<li class="${id === speaking ? "turn" : ""} ${out ? "out" : ""}"><span class="who">${avatar(id, "sm")}${esc(nameOf(id))}${you(id)}
       ${out && role ? ` <span class="tag ${role}">${ROLE_LABEL[role]}</span>` : ""}</span>
       <span class="clues">${cs.map(c => `<span class="clue ${c.cycle === r.cycle ? "now" : ""}">${esc(c.word)}</span>`).join("")}
       ${id === speaking ? `<span class="pending">écrit…</span>` : ""}
@@ -1306,7 +1426,7 @@ function viewDeal() {
   const r = S.room, uid = r.order[r.deal], last = r.deal + 1 >= r.order.length;
   const prog = `<div class="progress">${r.order.map((_, i) => `<i class="${i < r.deal ? "done" : ""}"></i>`).join("")}</div>`;
   if (!S.dealReady) return `${bar()}${statusLine()}
-  <div class="panel pass stack">${prog}<p class="label">Passe l'appareil à</p><p class="who">${esc(nameOf(uid))}</p>
+  <div class="panel pass stack">${prog}${avatar(uid, "lg")}<p class="label">Passe l'appareil à</p><p class="who">${esc(nameOf(uid))}</p>
     <p class="small muted">Les autres, regardez ailleurs.</p>
     <button class="primary" data-a="dealReady">C'est moi, ${esc(nameOf(uid))}</button></div>`;
   return `${bar()}${statusLine()}
@@ -1356,7 +1476,7 @@ function viewVote() {
   if (isLocal()) return `${bar()}${statusLine()}
   <div class="panel"><h2>Qui élimine-t-on ?</h2>
     <p class="small muted">Débattez, votez à main levée, puis touchez le joueur désigné.</p>
-    <div class="votes">${r.alive.map(id => `<button data-a="vote" data-u="${esc(id)}" class="${S.pick === id ? "mine" : ""}"><span>${esc(nameOf(id))}</span></button>`).join("")}</div>
+    <div class="votes">${r.alive.map(id => `<button data-a="vote" data-u="${esc(id)}" class="${S.pick === id ? "mine" : ""}"><span class="vn">${avatar(id, "sm")}${esc(nameOf(id))}</span></button>`).join("")}</div>
     <button class="danger" data-a="confirmVote" ${S.pick ? "" : "disabled"}>${S.pick ? `Éliminer ${esc(nameOf(S.pick))}` : "Choisis un joueur"}</button>
     <button class="ghost" data-a="peekStart">Revoir mon mot</button>
     ${errLine()}</div>
@@ -1367,15 +1487,21 @@ function viewVote() {
   <div class="panel"><div class="status"><h2>Vote</h2><span class="label"><b>${vs.length}</b> / ${r.alive.length} ont voté</span></div>
     <p class="small muted">${can ? "Qui est l'imposteur ? Le joueur le plus désigné est éliminé." : "Tu es éliminé·e ou spectateur. Regarde les autres voter."}</p>
     <div class="votes">${r.alive.filter(id => id !== S.uid).map(id => `<button data-a="vote" data-u="${esc(id)}" class="${my?.target === id ? "mine" : ""}" ${!can ? "disabled" : ""}>
-      <span>${esc(nameOf(id))}</span><span class="n">${done.has(id) ? "a voté" : ""}</span></button>`).join("")}</div>
+      <span class="vn">${avatar(id, "sm")}${esc(nameOf(id))}</span><span class="n">${done.has(id) ? "a voté" : ""}</span></button>`).join("")}</div>
     ${isHost() ? `<button class="ghost" data-a="resolve" ${vs.length ? "" : "disabled"}>Dépouiller les votes maintenant</button>` : ""}
     ${errLine()}</div>
   ${chatPanel()}
   ${wordsPanel()}`;
 }
-function outLine(lo) {
+function outMole(lo) {
+  if (!lo || lo.tie) return "";
+  if (lo.role === "uc") return moleScene({ mask: "fall", mood: "surprised" }, "reveal-mole", "La taupe est démasquée");
+  if (lo.role === "ghost") return moleScene({ mask: "off", mood: "surprised", ghost: true }, "reveal-mole", "Le Fantôme est démasqué");
+  return moleScene({ mask: "off", mood: "calm" }, "reveal-mole small-mole");
+}
+function outLine(lo, withMole) {
   if (!lo || lo.tie) return `<p class="big">Égalité</p><p class="muted">Personne n'est éliminé. On repart pour un tour.</p>`;
-  return `<p class="label">Éliminé·e</p><p class="big">${esc(nameOf(lo.uid))}</p>
+  return `${withMole ? outMole(lo) : ""}<p class="label">Éliminé·e</p><p class="big">${esc(nameOf(lo.uid))}</p>
     <p>C'était : <span class="tag ${lo.role}">${ROLE_LABEL[lo.role]}</span></p>
     ${lo.guess ? `<p class="muted">Le Fantôme a proposé « ${esc(lo.guess)} » : ${lo.right ? "bonne réponse !" : "raté."}</p>` : ""}`;
 }
@@ -1397,7 +1523,7 @@ function viewPeek() {
 }
 function viewResult() {
   return `${bar()}${statusLine()}${mySlip()}
-  <div class="panel reveal stack">${outLine(S.room.lastOut)}</div>
+  <div class="panel reveal stack">${outLine(S.room.lastOut, true)}</div>
   ${voteReveal()}
   ${isHost() ? `<button class="primary" data-a="continue">Tour de parole suivant</button>` : `<p class="small muted">L'hôte relance la suite…</p>`}
   ${chatPanel()}
@@ -1421,7 +1547,7 @@ function viewGhostGuess() {
 function scoreList() {
   const sc = S.room.scores || {}, ids = Object.keys(sc).sort((a, b) => (sc[b] || 0) - (sc[a] || 0));
   return `<ul class="scores">${ids.map((id, i) => `<li class="${i === 0 ? "first" : ""}"><span class="rank">${i + 1}</span>
-    <span class="name">${esc(nameOf(id))}${you(id)}</span><span class="pts">${sc[id] || 0} pts</span></li>`).join("")}</ul>`;
+    ${avatar(id, "sm")}<span class="name">${esc(nameOf(id))}${you(id)}</span><span class="pts">${sc[id] || 0} pts</span></li>`).join("")}</ul>`;
 }
 function viewRoundEnd() {
   const r = S.room, last = r.manche >= r.settings.manches;
@@ -1429,7 +1555,11 @@ function viewRoundEnd() {
   return `${bar()}${statusLine()}
   ${isHost() ? `<button class="primary" data-a="next">${last ? "Voir le classement final" : "Manche suivante"}</button>` : `<p class="small muted">L'hôte lance la suite…</p>`}
   ${errLine()}
-  <div class="panel reveal stack"><p class="big win-${r.winner}">${title}</p>${r.lastOut ? `<div class="stack">${outLine(r.lastOut)}</div>` : ""}</div>
+  <div class="panel reveal stack">${{ civils: moleScene({ mask: "fall", mood: "surprised" }, "reveal-mole", "La taupe est démasquée"),
+      imposteurs: moleScene({ mask: "on", mood: "laugh" }, "reveal-mole laughing", "La taupe rigole"),
+      ghost: moleScene({ mask: "off", mood: "laugh", ghost: true }, "reveal-mole laughing", "Le Fantôme rigole"),
+      none: moleScene({ mask: "off", mood: "surprised" }, "reveal-mole small-mole") }[r.winner] || ""}
+    <p class="big win-${r.winner}">${title}</p>${r.lastOut ? `<div class="stack">${outLine(r.lastOut)}</div>` : ""}</div>
   ${specialBanner()}
   ${r.special === "traitor" && r.traitor ? `<p class="invite">🗡️ Le Traître était <b class="plain">${esc(nameOf(r.traitor))}${you(r.traitor)}</b>.</p>` : ""}
   ${r.winner === "skipped" ? `<p class="small muted">L'hôte a passé cette manche : aucun point n'est compté.</p>` : ""}
@@ -1453,13 +1583,71 @@ function viewFinal() {
   ${isHost() ? `<div class="row topbtns"><button class="primary grow" data-a="replay">Rejouer avec les mêmes réglages</button>
     <button class="ghost grow" data-a="newGame">Changer les réglages</button></div>` : `<p class="small muted">L'hôte peut relancer une nouvelle partie.</p>`}
   ${errLine()}
-  <div class="panel reveal stack"><p class="label">Fin de la partie · ${S.room.manche} manche${S.room.manche > 1 ? "s" : ""}</p>
-    <p class="big champion">${ids.length ? esc(nameOf(ids[0])) + " gagne" : "Partie terminée"}</p></div>
+  <div class="panel reveal stack podium-panel"><p class="label">Fin de la partie · ${S.room.manche} manche${S.room.manche > 1 ? "s" : ""}</p>
+    <p class="big champion">${ids.length ? esc(nameOf(ids[0])) + " gagne" : "Partie terminée"}</p>
+    <div class="podium-wrap">
+      <div class="thrower left">${moleScene({ mask: "on", mood: "laugh" })}</div>
+      <div class="podium">${[1, 0, 2].map(i => ids[i] ? `<div class="step s${i + 1}">${avatar(ids[i], "lg")}<b>${esc(nameOf(ids[i]))}</b><span>${sc[ids[i]] || 0} pts</span><div class="block">${i + 1}</div></div>` : "").join("")}</div>
+      <div class="thrower right">${moleScene({ mask: "on", mood: "laugh" }, "flip")}</div>
+    </div></div>
   <div class="panel"><h3>Classement</h3>${scoreList()}</div>
   ${chatPanel()}`;
 }
 
 let lastScreen = "";
+const THEME_COLOURS = { classique: "#F5B83D", border: "#FF5C6C", film: "#B794FF", geek: "#3DD6FF", aleatoire: "#F5B83D" };
+function themeColour() {
+  const root = document.documentElement.style, t = S.room && S.mode ? (S.room.settings.theme === "netflix" ? "film" : S.room.settings.theme) : null;
+  const c = THEME_COLOURS[t];
+  if (!c) { root.removeProperty("--accent"); root.removeProperty("--glow"); return; }
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+  root.setProperty("--accent", c); root.setProperty("--glow", `rgba(${r},${g},${b},.28)`);
+}
+function mancheIntro(n, total) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const el = document.createElement("div");
+  el.className = "intro";
+  el.innerHTML = `<div class="intro-card"><span class="label">Manche</span><b>${n}<small> / ${total}</small></b>${moleScene({}, "intro-mole")}</div>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1900);
+}
+// Grass thrown by the two moles on the final podium.
+function throwGrass() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  document.querySelectorAll(".thrower").forEach((m, side) => {
+    const r = m.getBoundingClientRect();
+    if (!r.width) return;
+    for (let wave = 0; wave < 3; wave++) setTimeout(() => {
+      for (let i = 0; i < 16; i++) {
+        const g = document.createElement("i");
+        g.className = "grass";
+        g.style.left = (r.left + r.width / 2) + "px"; g.style.top = (r.top + r.height * .55) + "px";
+        g.style.setProperty("--dx", ((side ? -1 : 1) * (40 + Math.random() * 160)) + "px");
+        g.style.setProperty("--dy", (-(90 + Math.random() * 170)) + "px");
+        g.style.setProperty("--rot", (Math.random() * 720 - 360) + "deg");
+        g.style.background = ["#4CCB6A", "#3AA655", "#7BDD6E", "#2E8B47"][i % 4];
+        document.body.appendChild(g);
+        setTimeout(() => g.remove(), 1700);
+      }
+    }, wave * 700);
+  });
+}
+// The ground at the bottom of the screen, with holes a mole pops out of from time to time.
+function buildGround() {
+  const el = document.createElement("div");
+  el.className = "ground"; el.setAttribute("aria-hidden", "true");
+  el.innerHTML = [18, 52, 84].map(x => `<div class="hole" style="left:${x}%">${moleScene({}, "ground-mole")}</div>`).join("");
+  document.body.appendChild(el);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const pop = () => {
+    const holes = el.querySelectorAll(".hole"), h = holes[Math.floor(Math.random() * holes.length)];
+    h.classList.remove("pop"); void h.offsetWidth; h.classList.add("pop");
+    setTimeout(() => h.classList.remove("pop"), 2600);
+    setTimeout(pop, 9000 + Math.random() * 9000);
+  };
+  setTimeout(pop, 4000);
+}
+buildGround();
 function render() {
   const keep = ["pseudo", "joinCode", "clueInput", "guessInput", "newPlayer", "chatInput", "pairA", "pairB", "pairH"].map(id => {
     const el = document.getElementById(id); return el ? [id, el.value, document.activeElement === el, el.selectionStart] : null;
@@ -1468,10 +1656,10 @@ function render() {
   if (!S.mode) { html = viewHome(); screen = "home"; }
   else if (!S.room) {
     screen = "wait";
-    html = S.net === "waiting" ? `${bar()}<div class="panel reveal stack"><p class="big">En attente de l'hôte…</p>
+    html = S.net === "waiting" ? `${bar()}<div class="panel reveal stack">${moleScene({}, "peek")}<p class="big">En attente de l'hôte…</p>
       <p class="muted">Le salon ${esc(S.code)} n'est pas ouvert pour l'instant. Nouvel essai toutes les 5 secondes : dès que l'hôte revient, tu rejoins automatiquement.</p>
       <div class="row"><button class="ghost" data-a="leave">Retour</button></div></div>`
-      : `${bar()}<div class="panel reveal stack"><p class="big">${S.net === "lost" ? "Pas de connexion" : "Connexion au salon…"}</p>
+      : `${bar()}<div class="panel reveal stack">${moleScene({ mood: S.net === "lost" ? "surprised" : "calm", mask: S.net === "lost" ? "off" : "on" }, "peek")}<p class="big">${S.net === "lost" ? "Pas de connexion" : "Connexion au salon…"}</p>
       ${S.net === "lost" ? `${errLine()}<div class="row"><button class="primary" data-a="reconnect">Réessayer</button><button class="ghost" data-a="leave">Retour</button></div>` : `<p class="muted">Salon ${esc(S.code)}</p>`}</div>`;
   } else {
     screen = S.room.status + (S.room.status === "deal" ? S.room.deal + "" + S.dealReady : "");
@@ -1484,7 +1672,16 @@ function render() {
   const chatEl = document.getElementById("chatList"), stick = !chatEl || chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 40;
   app.innerHTML = html;
   const chatNew = document.getElementById("chatList"); if (chatNew && stick) chatNew.scrollTop = chatNew.scrollHeight;
-  if (screen !== lastScreen) { app.classList.remove("screen"); void app.offsetWidth; app.classList.add("screen"); window.scrollTo(0, 0); }
+  if (screen !== lastScreen) {
+    app.classList.remove("screen"); void app.offsetWidth; app.classList.add("screen"); window.scrollTo(0, 0);
+    // Mole entrances play once per screen, not on every refresh of the same screen.
+    app.dataset.fresh = "1"; clearTimeout(render.freshT); render.freshT = setTimeout(() => { delete app.dataset.fresh; }, 2600);
+    if (screen === "final") setTimeout(throwGrass, 900);
+  }
+  themeColour();
+  if (S.room && ["deal", "clues"].includes(S.room.status) && S.room.manche && S.introShown !== S.code + ":" + S.room.manche) {
+    S.introShown = S.code + ":" + S.room.manche; mancheIntro(S.room.manche, S.room.settings.manches);
+  }
   lastScreen = screen;
   keep.forEach(([id, val, focused, pos]) => {
     const el = document.getElementById(id); if (!el) return;
@@ -1546,6 +1743,8 @@ const ACTIONS = {
     if (!S.confirmSkip) { S.confirmSkip = true; render(); setTimeout(() => { if (S.confirmSkip) { S.confirmSkip = false; render(); } }, 4000); return; }
     S.confirmSkip = false; S.editing = false; send({ type: "skipManche" });
   },
+  pickAv: el => send({ type: "avatar", av: el.dataset.v }),
+  cycleAv: el => { const keys = Object.keys(ACCS), cur = S.room.players[el.dataset.u]?.av; send({ type: "avatar", uid: el.dataset.u, av: keys[(keys.indexOf(cur) + 1) % keys.length] }); },
   editOpen: () => { S.editing = true; S.err = ""; render(); },
   editClose: () => { S.editing = false; S.err = ""; render(); },
   peekStart: () => { S.peek = { step: "pick" }; render(); },
