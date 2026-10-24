@@ -172,6 +172,7 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .netbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: rgba(255,77,141,.1); border: 1px solid rgba(255,77,141,.45); border-radius: 10px; padding: 8px 10px 8px 14px; font-size: .9rem; }
 .netbar button { padding: 7px 12px; font-size: .85rem; }
 .themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.theme[data-v="aleatoire"] { grid-column: 1 / -1; }
 .theme { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 11px 13px; background: var(--bg); font-weight: 400; }
 .theme b { font-family: var(--f-display); font-size: .95rem; }
 .theme span { font-size: .78rem; color: var(--muted); }
@@ -356,6 +357,16 @@ const THEMES = {
     ["Dumbledore","Gandalf","sorcier"],["Yoda","Obi-Wan","Star Wars"],["Chewbacca","R2-D2","Star Wars"],["Astérix","Obélix","BD"],
     ["Tintin","Spirou","BD"],["Tom","Jerry","dessin animé"],["Bugs Bunny","Daffy Duck","dessin animé"]
   ] },
+  geek: { label: "Geek", desc: "Jeux vidéo, consoles, jargon de joueur", pairs: [
+    ["Minecraft","Roblox","jeu vidéo"],["Call of Duty","Battlefield","jeu de tir"],["FIFA","PES","jeu de foot"],["GTA","Red Dead Redemption","jeu vidéo"],
+    ["Zelda","Final Fantasy","jeu vidéo"],["Clash of Clans","Clash Royale","jeu mobile"],["Les Sims","Animal Crossing","jeu vidéo"],["Street Fighter","Tekken","jeu de combat"],
+    ["League of Legends","Dota 2","jeu en ligne"],["Mario Kart","Rocket League","jeu vidéo"],["Tetris","Puzzle Bobble","jeu vidéo"],
+    ["PlayStation","Xbox","console"],["Nintendo Switch","Game Boy","console"],["Clavier","Souris","ordinateur"],["Manette","Joystick","jouer"],
+    ["Casque VR","Réalité augmentée","virtuel"],["Salle d'arcade","Flipper","jouer"],["Wi-Fi","Bluetooth","connexion"],
+    ["Noob","Tryhard","joueur"],["Lag","Bug","problème"],["Respawn","Game Over","partie"],["Boss final","Donjon","niveau"],["Skin","Cosmétique","apparence"],
+    ["Twitch","YouTube","vidéo"],["Streamer","Youtubeur","créateur"],["Discord","Skype","discussion"],["Geek","Nerd","passionné"],
+    ["Cosplay","Déguisement","costume"],["Comic-Con","Japan Expo","salon"],["Hacker","Virus","ordinateur"],["Bitcoin","NFT","crypto"]
+  ] },
   aleatoire: { label: "Aléatoire", desc: "Un peu de tout, mélangé", mix: true, pairs: [] }
 };
 
@@ -383,7 +394,12 @@ const WIKI_TITLE = { "Mercredi": "Mercredi Addams", "Morticia": "Morticia Addams
   "Rogue": "Severus Rogue", "Frodon": "Frodon Sacquet", "Sam": "Samsagace Gamegie", "Barbie": "Barbie (film)", "Ken": "Ken (poupée)", "Alien": "Alien, le huitième passager",
   "Predator": "Predator (film)", "Annabelle": "Annabelle (film)", "Scream": "Scream (film)", "Saw": "Saw (film)",
   "Les 4 Fantastiques": "Les Quatre Fantastiques", "Coca": "Coca-Cola", "Bus": "Autobus", "Loup": "Loup gris", "Tongs": "Tong (chaussure)", "Gants": "Gant",
-  "Céréales": "Céréales du petit-déjeuner" };
+  "Céréales": "Céréales du petit-déjeuner",
+  "GTA": "Grand Theft Auto", "FIFA": "FIFA (série de jeux vidéo)", "PES": "eFootball", "Zelda": "The Legend of Zelda", "Final Fantasy": "Final Fantasy",
+  "Les Sims": "Les Sims", "Dota 2": "Dota 2", "Tetris": "Tetris", "Puzzle Bobble": "Puzzle Bobble", "Xbox": "Xbox", "Souris": "Souris (informatique)",
+  "Clavier": "Clavier d'ordinateur", "Manette": "Manette de jeu", "Joystick": "Manche à balai (informatique)", "Casque VR": "Casque de réalité virtuelle",
+  "Flipper": "Flipper (jeu)", "Lag": "Latence (informatique)", "Bug": "Bug (informatique)", "Skin": "Skin (jeu vidéo)", "Discord": "Discord (logiciel)",
+  "Virus": "Virus informatique", "Comic-Con": "San Diego Comic-Con", "Hacker": "Hacker (sécurité informatique)" };
 const HINT_EMOJI = { appli: "📱", "téléphone": "📱", "réseau": "📲", site: "🔞", "cœur": "💘", relation: "💋", couple: "💔", "séduction": "😏", rencontre: "☕",
   "défaut": "😤", famille: "👪", alcool: "🍸", lendemain: "🤕", verre: "🥃", "soirée": "🪩", "fumée": "💨", peau: "💋", danse: "💃", accessoire: "⛓️",
   "sous-vêtement": "👙", tenue: "👙", corps: "🍑", jeu: "🎲", nuit: "🌙", chambre: "🛏️", chaleur: "♨️", "précaution": "🛡️", pharmacie: "💊",
