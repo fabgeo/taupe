@@ -320,7 +320,7 @@ const THEMES = {
     ["Demande en mariage","Bague de fiançailles","couple"],["Lune de miel","Voyage de noces","couple"],["Pension alimentaire","Garde alternée","divorce"],["Amende","PV","police"],
     ["Radar","Flash","route"],["Casier judiciaire","Bracelet électronique","justice"],["Braquage","Cambriolage","crime"],["Mafia","Cartel","crime"],
     ["Pot-de-vin","Corruption","argent"],["Dealer","Revendeur","rue"],["Embaumement","Taxidermie","conservation"],
-    ["Tueur à gages","Sniper","meurtre"],["Alibi","Témoin","enquête"],["Médium","Voyante","au-delà"],["Ouija","Spiritisme","au-delà"],
+    ["Tueur à gages","Mercenaire","meurtre"],["Alibi","Témoin","enquête"],["Médium","Voyante","au-delà"],["Ouija","Spiritisme","au-delà"],
     ["Maison hantée","Château hanté","au-delà"],["Apocalypse","Fin du monde","fin"],["Maison de retraite","EHPAD","vieillesse"],
     ["Dentier","Appareil auditif","vieillesse"],["Viagra","Cialis","pharmacie"],["Calvitie","Perruque","cheveux"],["Botox","Lifting","chirurgie"],
     ["Diarrhée","Gastro","malade"],["Hémorroïdes","Constipation","malade"],["Puberté","Ménopause","âge"],["Faux cul","Hypocrite","défaut"]
@@ -363,13 +363,19 @@ const THEMES = {
     ["League of Legends","Dota 2","jeu en ligne"],["Mario Kart","Rocket League","jeu vidéo"],["Tetris","Puzzle Bobble","jeu vidéo"],
     ["PlayStation","Xbox","console"],["Nintendo Switch","Game Boy","console"],["Clavier","Souris","ordinateur"],["Manette","Joystick","jouer"],
     ["Casque VR","Réalité augmentée","virtuel"],["Salle d'arcade","Flipper","jouer"],["Wi-Fi","Bluetooth","connexion"],
-    ["Noob","Tryhard","joueur"],["Lag","Bug","problème"],["Respawn","Game Over","partie"],["Boss final","Donjon","niveau"],["Skin","Cosmétique","apparence"],
+    ["Noob","Bot","joueur"],["Lag","Bug","problème"],["Respawn","Game Over","partie"],["Boss final","Donjon","niveau"],["Skin","Cosmétique","apparence"],
     ["Twitch","YouTube","vidéo"],["Streamer","Youtubeur","créateur"],["Discord","Skype","discussion"],["Geek","Nerd","passionné"],
     ["Cosplay","Déguisement","costume"],["Comic-Con","Japan Expo","salon"],["Hacker","Virus","ordinateur"],["Bitcoin","NFT","crypto"],
     ["Mario","Luigi","Nintendo"],["Pikachu","Évoli","Pokémon"],["Pokémon","Digimon","anime"],
     ["Yasuo","Yone","League of Legends"],["Garen","Darius","League of Legends"],["Baron Nashor","Dragon ancestral","League of Legends"],
     ["Fortnite","Apex Legends","battle royale"],["Valorant","CS:GO","jeu de tir"],["The Last of Us","Uncharted","jeu d'aventure"],
-    ["Elden Ring","Dark Souls","jeu difficile"],["Rage quit","AFK","joueur"],["Pentakill","Ace","exploit"],["Steam","Epic Games","boutique de jeux"]
+    ["Elden Ring","Dark Souls","jeu difficile"],["Rage quit","AFK","joueur"],["Pentakill","Ace","exploit"],["Steam","Epic Games","boutique de jeux"],
+    ["Norman","Cyprien","youtubeur"],["Michou","Inoxtag","youtubeur"],["McFly","Carlito","youtubeur"],["Gotaga","Kameto","streamer"],
+    ["ZeratoR","Domingo","streamer"],["Tibo InShape","Juju Fitcats","youtubeur"],["BFMTV","HugoDécrypte","info"],["MrBeast","Squeezie","youtubeur"],
+    ["Karmine Corp","Gentle Mates","équipe esport"],["Team Vitality","Solary","équipe esport"],["ZEvent","Téléthon","dons"],["GP Explorer","Formule 1","course"],
+    ["Sonic","Shadow","SEGA"],["Donkey Kong","Diddy Kong","Nintendo"],["Pokémon Rouge","Pokémon Jaune","Pokémon"],["Nintendo DS","PSP","console portable"],
+    ["Wii","Wii Sports","Nintendo"],["Headshot","One shot","jeu de tir"],["Camper","Sniper","jeu de tir"],["GG","EZ","fin de partie"],
+    ["Expérience","Level up","progression"],["Quête","Mission","objectif"],["Mise à jour","Patch","jeu vidéo"],["Ranked","Tryhard","compétition"]
   ] },
   aleatoire: { label: "Aléatoire", desc: "Un peu de tout, mélangé", mix: true, pairs: [] }
 };
@@ -406,7 +412,11 @@ const WIKI_TITLE = { "Mercredi": "Mercredi Addams", "Morticia": "Morticia Addams
   "Virus": "Virus informatique", "Comic-Con": "San Diego Comic-Con", "Hacker": "Hacker (sécurité informatique)",
   "Mario": "Mario (personnage)", "Luigi": "Luigi", "Yasuo": "League of Legends", "Yone": "League of Legends", "Garen": "League of Legends", "Darius": "League of Legends",
   "Baron Nashor": "League of Legends", "Dragon ancestral": "League of Legends", "CS:GO": "Counter-Strike: Global Offensive", "Steam": "Steam (logiciel)",
-  "Epic Games": "Epic Games Store", "AFK": "AFK (jeu vidéo)" };
+  "Epic Games": "Epic Games Store", "AFK": "AFK (jeu vidéo)",
+  "Norman": "Norman Thavaud", "Cyprien": "Cyprien Iov", "Michou": "Michou (vidéaste)", "McFly": "McFly et Carlito", "Carlito": "McFly et Carlito",
+  "Domingo": "Domingo (vidéaste)", "HugoDécrypte": "Hugo Travers", "BFMTV": "BFM TV", "ZEvent": "Z Event", "Téléthon": "Téléthon (France)",
+  "Sonic": "Sonic (personnage)", "Shadow": "Shadow the Hedgehog (personnage)", "Donkey Kong": "Donkey Kong (personnage)", "Pokémon Rouge": "Pokémon Rouge et Bleu",
+  "PSP": "PlayStation Portable", "Headshot": "Headshot", "Camper": "Campeur (jeu vidéo)" };
 const HINT_EMOJI = { appli: "📱", "téléphone": "📱", "réseau": "📲", site: "🔞", "cœur": "💘", relation: "💋", couple: "💔", "séduction": "😏", rencontre: "☕",
   "défaut": "😤", famille: "👪", alcool: "🍸", lendemain: "🤕", verre: "🥃", "soirée": "🪩", "fumée": "💨", peau: "💋", danse: "💃", accessoire: "⛓️",
   "sous-vêtement": "👙", tenue: "👙", corps: "🍑", jeu: "🎲", nuit: "🌙", chambre: "🛏️", chaleur: "♨️", "précaution": "🛡️", pharmacie: "💊",
