@@ -911,6 +911,7 @@ function viewFor(G, uid) {
   const ended = ["roundEnd", "final"].includes(G.status);
   if (!ended && G.special && SPECIALS[G.special]?.secret) v.special = null;
   if (!ended) v.traitor = G.traitor === uid ? uid : null;
+  if (!ended) { v.mayor = G.mayor === uid ? uid : null; if (v.lastVotes) delete v.lastVotes.mayorUid; }
   v.traitorInfo = !ended && G.traitor === uid ? Object.keys(G.roles).filter(id => G.roles[id].role !== "civil") : null;
   if (G.special === "simul" && G.status === "clues") {
     v.simulDone = simulDone(G);
@@ -1405,7 +1406,7 @@ function viewHome() {
       <span class="tag uc">Taupe</span><span>Ton mot est proche mais différent. Tu ne sais pas que tu es la Taupe : fonds-toi dans la masse.</span>
       <span class="tag ghost">Fantôme</span><span>Pas de mot, juste un indice très large. Bluffe. Si on t'élimine, devine le mot des civils pour gagner.</span>
     </div>
-    <p class="small muted">En ligne, un maire est tiré au sort à chaque manche : en cas d'égalité au vote, sa voix départage.</p>
+    <p class="small muted">En ligne, un maire secret est tiré au sort à chaque manche : lui seul le sait, et en cas d'égalité au vote, sa voix départage.</p>
     <p class="small muted">Points : civil gagnant ${POINTS.civil}, Taupe gagnante ${POINTS.uc}, Fantôme gagnant ${POINTS.ghost}.</p>
   </div>
   ${SHEET_URL ? `<div class="panel"><div class="status"><h3>Une idée de paire ?</h3><span class="label">Boîte à idées</span></div>
@@ -1610,7 +1611,7 @@ function voteReveal() {
   if (!lv || lv.manche !== r.manche || lv.cycle !== r.cycle || !lv.list.length) return "";
   return `<div class="panel"><h3>Qui a voté contre qui</h3>
     ${lv.mayorDecided ? `<p class="small mayorline">🎖️ Égalité : la voix du maire a départagé.</p>` : ""}
-    <ul class="vreveal">${lv.list.map((v, i) => `<li style="animation-delay:${(i * .45).toFixed(2)}s"><span>${esc(nameOf(v.uid))}${you(v.uid)}${v.uid === r.mayor || (lv.mayorDecided && v.target === lv.mayorDecided && v.uid === lv.mayorUid) ? " 🎖️" : ""}</span><span class="arrow">→</span><b>${esc(nameOf(v.target))}${you(v.target)}</b></li>`).join("")}</ul></div>`;
+    <ul class="vreveal">${lv.list.map((v, i) => `<li style="animation-delay:${(i * .45).toFixed(2)}s"><span>${esc(nameOf(v.uid))}${you(v.uid)}${lv.mayorUid && v.uid === lv.mayorUid ? " 🎖️" : ""}</span><span class="arrow">→</span><b>${esc(nameOf(v.target))}${you(v.target)}</b></li>`).join("")}</ul></div>`;
 }
 const wordsPanel = () => isLocal() ? "" : `<div class="panel"><h3>Les mots donnés</h3>${board()}</div>`;
 function board() {
@@ -1621,7 +1622,7 @@ function board() {
   const mc = r.clues.filter(c => c.manche === r.manche).sort((a, b) => a.cycle - b.cycle || a.tour - b.tour);
   return `<ul class="board">${seq.map(id => {
     const out = !r.alive.includes(id), cs = mc.filter(c => c.uid === id), role = r.roles?.[id]?.role;
-    return `<li class="${id === speaking ? "turn" : ""} ${out ? "out" : ""}"><span class="who">${avatar(id, "sm")}${esc(nameOf(id))}${you(id)}${r.mayor === id && !out ? ` <span class="tag mayor" title="Le maire départage les égalités">🎖️ Maire</span>` : ""}
+    return `<li class="${id === speaking ? "turn" : ""} ${out ? "out" : ""}"><span class="who">${avatar(id, "sm")}${esc(nameOf(id))}${you(id)}${r.mayor === id && !out && (id === S.uid || ["roundEnd", "final"].includes(r.status)) ? ` <span class="tag mayor" title="Le maire départage les égalités">🎖️ Maire${id === S.uid && !["roundEnd", "final"].includes(r.status) ? " (secret)" : ""}</span>` : ""}
       ${out && role ? ` <span class="tag ${role}">${ROLE_LABEL[role]}</span>` : ""}</span>
       <span class="clues">${cs.map(c => `<span class="clue ${c.cycle === r.cycle ? "now" : ""}">${esc(c.word)}</span>`).join("")}
       ${id === speaking ? `<span class="pending">écrit…</span>` : ""}
@@ -1693,7 +1694,8 @@ function viewVote() {
   return `${bar()}${statusLine()}${mySlip()}
   <div class="panel"><div class="status"><h2>Vote</h2><span class="label"><b>${vs.length}</b> / ${r.alive.length} ont voté</span></div>
     <p class="small muted">${can ? "Qui est l'imposteur ? Le joueur le plus désigné est éliminé." : "Tu es éliminé·e ou spectateur. Regarde les autres voter."}</p>
-    ${r.mayor && r.alive.includes(r.mayor) ? `<p class="small mayorline">🎖️ ${esc(nameOf(r.mayor))}${you(r.mayor)} est le maire : en cas d'égalité, sa voix départage.</p>` : ""}
+    ${r.mayor === S.uid && r.alive.includes(S.uid) ? `<p class="small mayorline">🎖️ Tu es le maire (secret) : en cas d'égalité, ta voix départage. Personne ne le sait.</p>`
+      : !isLocal() ? `<p class="small mayorline">🎖️ Un maire secret départage les égalités.</p>` : ""}
     <div class="votes">${r.alive.filter(id => id !== S.uid).map(id => `<button data-a="vote" data-u="${esc(id)}" class="${my?.target === id ? "mine" : ""}" ${!can ? "disabled" : ""}>
       <span class="vn">${avatar(id, "sm")}${esc(nameOf(id))}</span><span class="n">${done.has(id) ? "a voté" : ""}</span></button>`).join("")}</div>
     ${isHost() ? `<button class="ghost" data-a="resolve" ${vs.length ? "" : "disabled"}>Dépouiller les votes maintenant</button>` : ""}
@@ -1769,6 +1771,7 @@ function viewRoundEnd() {
       none: moleScene({ mask: "off", mood: "surprised" }, "reveal-mole small-mole") }[r.winner] || ""}
     <p class="big win-${r.winner}">${title}</p>${r.lastOut ? `<div class="stack">${outLine(r.lastOut)}</div>` : ""}</div>
   ${specialBanner()}
+  ${r.mayor && !isLocal() ? `<p class="small mayorline">🎖️ Le maire secret était ${esc(nameOf(r.mayor))}${you(r.mayor)}.</p>` : ""}
   ${r.special === "traitor" && r.traitor ? `<p class="invite">🗡️ Le Traître était <b class="plain">${esc(nameOf(r.traitor))}${you(r.traitor)}</b>.</p>` : ""}
   ${r.winner === "skipped" ? `<p class="small muted">L'hôte a passé cette manche : aucun point n'est compté.</p>` : ""}
   ${r.winner === "none" ? `<p class="small muted">${r.lastOut && !r.lastOut.tie ? `${esc(nameOf(r.lastOut.uid))} a été éliminé·e à tort et perd ${-POINTS.wrongVote * (r.special === "double" ? 2 : 1)} points.` : "Égalité : personne ne perd de points."}</p>` : ""}
