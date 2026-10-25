@@ -370,6 +370,12 @@ select:focus { outline: none; border-color: var(--accent); }
   .sidecol { position: sticky; top: calc(16px + env(safe-area-inset-top, 0px)); }
   .sidecol .chat { max-height: 52vh; }
 }
+.burrow { position: fixed; top: 0; bottom: 0; z-index: 0; pointer-events: none; display: none; overflow: hidden;
+  width: calc((100vw - var(--cw, 560px)) / 2 - 28px); }
+.burrow svg { width: 100%; height: 100%; display: block; }
+.burrow.left { left: 0; -webkit-mask-image: linear-gradient(90deg, #000 70%, transparent); mask-image: linear-gradient(90deg, #000 70%, transparent); }
+.burrow.right { right: 0; -webkit-mask-image: linear-gradient(270deg, #000 70%, transparent); mask-image: linear-gradient(270deg, #000 70%, transparent); }
+@media (min-width: 1000px) { .burrow { display: block; } }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -413,17 +419,17 @@ const THEMES = {
     ["Omelette","Œuf au plat","petit-déjeuner"],["Céréales","Muesli","petit-déjeuner"],["Jus d'orange","Jus de pomme","boisson"],["Coca","Pepsi","soda"],
     ["Nutella","Beurre de cacahuète","tartine"],["Bus","Tramway","transport"],["Sac à main","Pochette","accessoire"],["Casquette","Chapeau","tête"],
     ["Gants","Moufles","hiver"],["Tongs","Sandales","été"],["Natation","Plongée","eau"],["Tornade","Ouragan","météo"],
-    ["Saut à l'élastique","Saut en parachute","sensation"],["Taser","Châtaigne","électrique"]
+    ["Saut à l'élastique","Saut en parachute","sensation"],["Taser","Électriser","électrique"]
 ] },
   border: { label: "Border", desc: "Soirées, couple, limite", pairs: [
-    ["Tinder","Bumble","appli"],["Ex","Plan cul","cœur"],["Vodka","Tequila","alcool"],["Gueule de bois","Mal de crâne","lendemain"],
+    ["Tinder","Bumble","appli"],["Ex","Plan cul","cœur"],["Vodka","Tequila","alcool"],["Lendemain de soirée","Mal de crâne","lendemain"],
     ["Strip-tease","Pole dance","danse"],["Préservatif","Pilule","précaution"],["Menottes","Bandeau","accessoire"],["Bisou","Suçon","peau"],
     ["Ghoster","Bloquer","téléphone"],["Coup d'un soir","Sex friend","relation"],["Nudes","Sexto","téléphone"],["String","Culotte","sous-vêtement"],
     ["Boîte de nuit","Bar","soirée"],["Joint","Chicha","fumée"],["Pet","Rot","bruit"],["Prison","Garde à vue","police"],
-    ["Belle-mère","Belle-sœur","famille"],["Divorce","Rupture","couple"],["Infidèle","Adultère","couple"],["Doigt d'honneur","Bras d'honneur","geste"],
+    ["Belle-mère","Belle-sœur","famille"],["Divorce","Rupture","couple"],["Adultère","Briseur de couple","couple"],["Doigt d'honneur","Bras d'honneur","geste"],
     ["Strip poker","Action ou vérité","jeu"],["Sauna","Jacuzzi","chaleur"],["Lap dance","Twerk","danse"],["Épilation","Rasage","poils"],
     ["Bourré","Pompette","alcool"],["Fesses","Poitrine","corps"],["Drague","Flirt","séduction"],["Speed dating","Rendez-vous à l'aveugle","rencontre"],
-    ["Lingerie","Nuisette","tenue"],["Jaloux","Possessif","défaut"],["Mytho","Menteur","défaut"],["Plan à trois","Partouze","nuit"],
+    ["Lingerie","Nuisette","tenue"],["Jaloux","Possessif","défaut"],["Mytho","Vantard","défaut"],["Plan à trois","Partouze","nuit"],
     ["Love hotel","Motel","chambre"],["Shot","Cocktail","verre"],["After","Before","soirée"],["Fessée","Martinet","jeu"],
     ["Gynécologue","Urologue","médecin"],["Test de grossesse","Pilule du lendemain","pharmacie"],["Beer pong","Jeu à boire","soirée"],["OnlyFans","Pornhub","site"],
     ["Enterrement","Crémation","mort"],["Cercueil","Urne","mort"],["Testament","Héritage","notaire"],["Croque-mort","Médecin légiste","métier"],
@@ -436,16 +442,16 @@ const THEMES = {
     ["Champignons magiques","LSD","trip"],["Évasion","Cavale","fuite"],["Purgatoire","Enfer","au-delà"],
     ["Messe noire","Sabbat","sorcellerie"],["Fétichisme","Voyeurisme","penchant"],["Cubi","Magnum","vin"],
     ["Rhum","Whisky","alcool"],["Champagne","Prosecco","bulles"],["Mojito","Caïpirinha","cocktail"],["Apéro","Happy hour","soirée"],
-    ["Alcootest","Éthylotest","police"],["Coma éthylique","Black-out","soirée"],["Cuite","Murge","alcool"],["Sextoy","Godemiché","tiroir"],
+    ["Éthylotest","Test salivaire","police"],["Coma éthylique","Black-out","soirée"],["Cuite","Gueule de bois","alcool"],["Sextoy","Godemiché","tiroir"],
     ["Lubrifiant","Huile de massage","tiroir"],["Kamasutra","Positions","nuit"],["Missionnaire","Levrette","position"],["Strip-club","Peep-show","nuit"],
     ["Escort","Gigolo","métier"],["Crush","Coup de foudre","cœur"],["Ex toxique","Manipulateur","couple"],["Tromper","Cocu","couple"],
     ["Demande en mariage","Bague de fiançailles","couple"],["Lune de miel","Voyage de noces","couple"],["Pension alimentaire","Garde alternée","divorce"],["Amende","PV","police"],
     ["Radar","Flash","route"],["Casier judiciaire","Bracelet électronique","justice"],["Braquage","Cambriolage","crime"],["Mafia","Cartel","crime"],
     ["Pot-de-vin","Corruption","argent"],["Dealer","Revendeur","rue"],["Embaumement","Taxidermie","conservation"],
     ["Tueur à gages","Mercenaire","meurtre"],["Alibi","Témoin","enquête"],["Médium","Voyante","au-delà"],["Ouija","Spiritisme","au-delà"],
-    ["Maison hantée","Château hanté","au-delà"],["Apocalypse","Fin du monde","fin"],["Maison de retraite","EHPAD","vieillesse"],
+    ["Maison hantée","Château hanté","au-delà"],["Apocalypse","Catastrophe","fin"],["Maison de retraite","EHPAD","vieillesse"],
     ["Dentier","Appareil auditif","vieillesse"],["Viagra","Cialis","pharmacie"],["Calvitie","Perruque","cheveux"],["Botox","Lifting","chirurgie"],
-    ["Diarrhée","Gastro","malade"],["Hémorroïdes","Constipation","malade"],["Puberté","Ménopause","âge"],["Faux cul","Hypocrite","défaut"]
+    ["Diarrhée","Gastro","malade"],["Hémorroïdes","Constipation","malade"],["Puberté","Ménopause","âge"],["Faux cul","Lèche-bottes","défaut"]
   ] },
   film: { label: "Film", desc: "Manga, dessins animés, séries, films", pairs: [
     ["Naruto","Sasuke","manga"],["Goku","Vegeta","manga"],["Luffy","Zoro","manga"],["Tanjiro","Nezuko","manga"],
@@ -465,7 +471,7 @@ const THEMES = {
     ["Barbie","Ken","poupée"],["Alien","Predator","monstre"],["Chucky","Annabelle","poupée"],["Scream","Saw","horreur"],
     ["Kakashi","Jiraya","manga"],["Itachi","Madara","manga"],["Nami","Robin","manga"],["Sanji","Usopp","manga"],
     ["Zenitsu","Inosuke","manga"],["Mikasa","Armin","manga"],["Gon","Kirua","manga"],["Saitama","Genos","manga"],
-    ["Deku","Bakugo","manga"],["Gojo","Sukuna","manga"],["Dragon Ball","Les Chevaliers du Zodiaque","anime"],["Edward","Alphonse","manga"],["Death Note","Code Geass","anime"],
+    ["Deku","Bakugo","manga"],["Gojo","Sukuna","manga"],["Dragon Ball","Les Chevaliers du Zodiaque","anime"],["Edward","Alphonse","manga"],
     ["Demon Slayer","Jujutsu Kaisen","anime"],["L'Attaque des Titans","Tokyo Ghoul","anime"],["Dracaufeu","Tortank","Pokémon"],["Sacha","Pierre","Pokémon"],
     ["Aladdin","Jasmine","Disney"],["Mulan","Pocahontas","Disney"],["Blanche-Neige","Cendrillon","Disney"],["Jafar","Scar","méchant"],
     ["Ursula","Maléfique","méchant"],["Nemo","Dory","Pixar"],["Flash McQueen","Martin","Pixar"],["WALL-E","EVE","Pixar"],
@@ -485,7 +491,7 @@ const THEMES = {
     ["League of Legends","Dota 2","jeu en ligne"],["Mario Kart","Rocket League","jeu vidéo"],["Tetris","Puzzle Bobble","jeu vidéo"],
     ["PlayStation","Xbox","console"],["Nintendo Switch","Game Boy","console"],["Clavier","Souris","ordinateur"],["Manette","Joystick","jouer"],
     ["Casque VR","Réalité augmentée","virtuel"],["Salle d'arcade","Flipper","jouer"],["Wi-Fi","Bluetooth","connexion"],
-    ["Noob","Bot","joueur"],["Lag","Bug","problème"],["Respawn","Game Over","partie"],["Boss final","Donjon","niveau"],["Skin","Cosmétique","apparence"],
+    ["Noob","Bot","joueur"],["Lag","Bug","problème"],["Respawn","Game Over","partie"],["Boss final","Donjon","niveau"],["Skin","Apparat","apparence"],
     ["Twitch","YouTube","vidéo"],["Streamer","Youtubeur","créateur"],["Discord","Skype","discussion"],["Geek","Nerd","passionné"],
     ["Cosplay","Déguisement","costume"],["Comic-Con","Japan Expo","salon"],["Hacker","Virus","ordinateur"],["Bitcoin","NFT","crypto"],
     ["Mario","Luigi","Nintendo"],["Pikachu","Évoli","Pokémon"],["Pokémon","Digimon","anime"],
@@ -493,11 +499,11 @@ const THEMES = {
     ["Fortnite","Apex Legends","battle royale"],["Valorant","CS:GO","jeu de tir"],["The Last of Us","Uncharted","jeu d'aventure"],
     ["Elden Ring","Dark Souls","jeu difficile"],["Rage quit","AFK","joueur"],["Pentakill","Ace","exploit"],["Steam","Epic Games","boutique de jeux"],
     ["Norman","Cyprien","youtubeur"],["Michou","Inoxtag","youtubeur"],["McFly","Carlito","youtubeur"],["Gotaga","Kameto","streamer"],
-    ["ZeratoR","Domingo","streamer"],["Tibo InShape","Juju Fitcats","youtubeur"],["BFMTV","HugoDécrypte","info"],["MrBeast","Squeezie","youtubeur"],
+    ["ZeratoR","Domingo","streamer"],["Tibo InShape","Juju Fitcats","youtubeur"],["HugoDécrypte","Legend","média"],["MrBeast","Squeezie","youtubeur"],
     ["Karmine Corp","Gentle Mates","équipe esport"],["Team Vitality","Solary","équipe esport"],["ZEvent","Téléthon","dons"],["GP Explorer","Formule 1","course"],
     ["Sonic","Shadow","SEGA"],["Donkey Kong","Diddy Kong","Nintendo"],["Pokémon Rouge","Pokémon Jaune","Pokémon"],["Nintendo DS","PSP","console portable"],
     ["Wii","Wii Sports","Nintendo"],["Headshot","One shot","jeu de tir"],["Camper","Sniper","jeu de tir"],["GG","EZ","fin de partie"],
-    ["Expérience","Level up","progression"],["Quête","Mission","objectif"],["Mise à jour","Patch","jeu vidéo"],["Ranked","Tryhard","compétition"],
+    ["Expérience","Level up","progression"],["Quête","Succès","objectif"],["Mise à jour","Patch","jeu vidéo"],["Ranked","Tryhard","compétition"],
     ["Natoo","Léna Situations","youtubeuse"],["Lobby","Matchmaking","en ligne"]
   ] },
   aleatoire: { label: "Aléatoire", desc: "Un peu de tout, mélangé", mix: true, pairs: [] }
@@ -1839,6 +1845,45 @@ function buildGround() {
   setTimeout(pop, 4000);
 }
 buildGround();
+// Underground scenery on the empty sides of wide screens: soil, roots, stones and tunnels with a mole crawling along.
+function burrowSvg(flip) {
+  const tunnel = flip ? "M120 -40 C 40 90, 190 210, 110 330 S 30 520, 120 640 S 200 860, 100 1060" : "M80 -40 C 170 100, 10 220, 90 340 S 170 540, 80 660 S 0 870, 100 1060";
+  const branch = flip ? "M110 330 C 160 360, 190 420, 230 430" : "M90 340 C 40 370, 10 430, -30 440";
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const crawler = (dur, begin) => `<g><g transform="rotate(90)">
+      <ellipse cx="0" cy="0" rx="9" ry="13" fill="#5B4840"/><ellipse cx="0" cy="-12" rx="4" ry="3" fill="#FF8FA3"/>
+      <path d="M-7 -5 q7 -4 14 0 l0 3 q-7 -3 -14 0 z" fill="#F5B83D"/>
+      <ellipse cx="-8" cy="-2" rx="3" ry="2" fill="#FF9EB0"/><ellipse cx="8" cy="-2" rx="3" ry="2" fill="#FF9EB0"/></g>
+      ${still ? "" : `<animateMotion dur="${dur}s" begin="${begin}s" repeatCount="indefinite" rotate="auto" path="${tunnel}"/>`}</g>`;
+  const roots = [[30, 0, 60], [150, 0, 90], [95, 0, 40]].map(([x, y, h], i) =>
+    `<path d="M${x} ${y} q${i % 2 ? 12 : -12} ${h / 2} 0 ${h} q${i % 2 ? -10 : 10} ${h / 3} ${i % 2 ? 6 : -6} ${h / 1.5}" stroke="#4A3329" stroke-width="3" fill="none" stroke-linecap="round"/>`).join("");
+  const stones = [[40, 170, 14, 9], [160, 260, 18, 11], [30, 480, 12, 8], [170, 600, 15, 10], [60, 780, 20, 12], [150, 930, 13, 9], [120, 120, 8, 6], [50, 900, 9, 6]]
+    .map(([x, y, rx, ry]) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#2E2622"/><ellipse cx="${x - 3}" cy="${y - 3}" rx="${rx / 2.5}" ry="${ry / 3}" fill="#3E3530"/>`).join("");
+  const specks = Array.from({ length: 70 }, (_, i) => `<circle cx="${(i * 53) % 200}" cy="${(i * 137) % 1000}" r="${1 + (i % 3) * .6}" fill="${i % 2 ? "#2A1D17" : "#3A2820"}"/>`).join("");
+  return `<svg viewBox="0 0 200 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs><linearGradient id="soil${flip ? 1 : 0}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E140F"/><stop offset="1" stop-color="#130C09"/></linearGradient></defs>
+    <rect width="200" height="1000" fill="url(#soil${flip ? 1 : 0})"/>${specks}${roots}${stones}
+    <path d="${branch}" stroke="#3A2820" stroke-width="30" fill="none" stroke-linecap="round"/><path d="${branch}" stroke="#0A0705" stroke-width="22" fill="none" stroke-linecap="round"/>
+    <path d="${tunnel}" stroke="#3A2820" stroke-width="34" fill="none" stroke-linecap="round"/>
+    <path d="${tunnel}" stroke="#0A0705" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <circle cx="${flip ? 60 : 140}" cy="560" r="26" fill="#3A2820"/><circle cx="${flip ? 60 : 140}" cy="560" r="21" fill="#0A0705"/>
+    <path d="M${flip ? 66 : 146} 560 C ${flip ? 80 : 126} 575, ${flip ? 100 : 106} 600, ${flip ? 112 : 92} 610" stroke="#3A2820" stroke-width="20" fill="none"/>
+    <g transform="translate(${flip ? 60 : 140} 566)"><ellipse rx="12" ry="8" fill="#5B4840"/><path d="M-6 -2 q3 -3 6 0 M2 -2 q3 -3 6 0" stroke="#F5B83D" stroke-width="2" fill="none"/>
+      <text x="12" y="-10" font-size="10" fill="#8F8D9B" font-family="sans-serif">z</text><text x="18" y="-18" font-size="8" fill="#8F8D9B" font-family="sans-serif">z</text></g>
+    ${crawler(flip ? 46 : 38, flip ? -12 : 0)}
+  </svg>`;
+}
+function buildBurrows() {
+  ["left", "right"].forEach((side, i) => {
+    const el = document.createElement("div");
+    el.className = "burrow " + side; el.setAttribute("aria-hidden", "true");
+    el.innerHTML = burrowSvg(i === 1);
+    document.body.appendChild(el);
+  });
+  const fit = () => document.documentElement.style.setProperty("--cw", (app.offsetWidth || 560) + "px");
+  addEventListener("resize", fit); fit(); setInterval(fit, 1000);
+}
+buildBurrows();
 function render() {
   const keep = ["pseudo", "joinCode", "clueInput", "guessInput", "newPlayer", "chatInput", "pairA", "pairB", "pairH"].map(id => {
     const el = document.getElementById(id); return el ? [id, el.value, document.activeElement === el, el.selectionStart] : null;
