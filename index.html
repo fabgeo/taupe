@@ -1829,6 +1829,16 @@ function throwGrass(els, waves = 6, up = false) {
     }, wave * 700);
   });
 }
+// A mole popping out of a scenery hole wears a skin: mostly those of the players in the game, otherwise any of the 16.
+function popHole(h) {
+  const ps = S.room && S.mode ? Object.values(S.room.players || {}).filter(p => p.av != null) : [];
+  const look = ps.length && Math.random() < .8 ? lookOf(ps[Math.floor(Math.random() * ps.length)].av) : AVATARS[Math.floor(Math.random() * AVATARS.length)];
+  h.classList.remove("pop");
+  h.innerHTML = moleScene({ look, mask: "off" }, "ground-mole");
+  void h.offsetWidth;
+  h.classList.add("pop"); clearTimeout(h.popT);
+  h.popT = setTimeout(() => h.classList.remove("pop"), 2700);
+}
 // The ground at the bottom of the screen, with holes a mole pops out of from time to time.
 function buildGround() {
   const el = document.createElement("div");
@@ -1837,15 +1847,13 @@ function buildGround() {
   document.body.appendChild(el);
   el.addEventListener("click", e => {
     const h = e.target.closest(".hole"); if (!h) return;
-    h.classList.add("pop"); clearTimeout(h.popT);
+    if (!h.classList.contains("pop")) popHole(h);
     setTimeout(() => throwGrass([h], 2, true), 250);
-    h.popT = setTimeout(() => h.classList.remove("pop"), 2600);
   });
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const pop = () => {
     const holes = el.querySelectorAll(".hole"), h = holes[Math.floor(Math.random() * holes.length)];
-    h.classList.remove("pop"); void h.offsetWidth; h.classList.add("pop");
-    setTimeout(() => h.classList.remove("pop"), 2600);
+    popHole(h);
     setTimeout(pop, 9000 + Math.random() * 9000);
   };
   setTimeout(pop, 4000);
@@ -1874,9 +1882,8 @@ function buildBurrows() {
     el.innerHTML = burrowDecor(i === 1) + [22, 52, 80].map((y, k) => `<button class="hole side-hole" style="top:${y}%;left:${(i ? [38, 62, 44] : [60, 36, 56])[k]}%" tabindex="-1" aria-label="Taupe">${moleScene({}, "ground-mole")}</button>`).join("");
     el.addEventListener("click", e => {
       const h = e.target.closest(".hole"); if (!h) return;
-      h.classList.add("pop"); clearTimeout(h.popT);
+      if (!h.classList.contains("pop")) popHole(h);
       setTimeout(() => throwGrass([h], 2, true), 250);
-      h.popT = setTimeout(() => h.classList.remove("pop"), 2600);
     });
     document.body.appendChild(el);
   });
@@ -1887,8 +1894,7 @@ function buildBurrows() {
     const holes = [...document.querySelectorAll(".burrow .hole")].filter(h => h.offsetParent);
     if (holes.length) {
       const h = holes[Math.floor(Math.random() * holes.length)];
-      h.classList.remove("pop"); void h.offsetWidth; h.classList.add("pop");
-      setTimeout(() => h.classList.remove("pop"), 2800);
+      popHole(h);
     }
     setTimeout(pop, 3500 + Math.random() * 4500);
   };
