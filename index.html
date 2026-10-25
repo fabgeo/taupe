@@ -430,7 +430,7 @@ const THEMES = {
     ["Saut à l'élastique","Saut en parachute","sensation"],["Taser","Électriser","électrique"]
 ] },
   border: { label: "Border", desc: "Soirées, couple, limite", pairs: [
-    ["Tinder","Bumble","appli"],["Ex","Plan cul","cœur"],["Vodka","Tequila","alcool"],["Lendemain de soirée","Mal de crâne","lendemain"],
+    ["Tinder","Meetic","appli"],["Ex","Plan cul","cœur"],["Vodka","Tequila","alcool"],["Lendemain de soirée","Mal de crâne","lendemain"],
     ["Strip-tease","Pole dance","danse"],["Préservatif","Pilule","précaution"],["Menottes","Bandeau","accessoire"],["Bisou","Suçon","peau"],
     ["Ghoster","Bloquer","téléphone"],["Coup d'un soir","Sex friend","relation"],["Nudes","Sexto","téléphone"],["String","Culotte","sous-vêtement"],
     ["Boîte de nuit","Bar","soirée"],["Joint","Chicha","fumée"],["Pet","Rot","bruit"],["Prison","Garde à vue","police"],
@@ -1873,18 +1873,36 @@ function buildGround() {
 buildGround();
 // Side scenery on wide screens: a wall of layered soil with roots and stones, and holes the mascot pops out of.
 function burrowDecor(flip) {
-  const layers = [["#2A1C15", 0], ["#24180F", 170], ["#2C1E16", 360], ["#20150E", 560], ["#281A12", 760], ["#1C120C", 920]];
-  const wave = (y, k) => `M0 ${y} C 50 ${y - 14 - k}, 110 ${y + 16}, 200 ${y - 6} L200 1000 L0 1000 Z`;
-  const strata = layers.map(([c, y], i) => `<path d="${wave(y, i * 3)}" fill="${c}"/>`).join("");
-  const roots = [[24, 70], [70, 110], [130, 60], [176, 95]].map(([x, h], i) =>
-    `<path d="M${x} 0 q${i % 2 ? 10 : -10} ${h / 2} ${i % 2 ? -4 : 4} ${h} q${i % 2 ? -8 : 8} ${h / 3} ${i % 2 ? 4 : -4} ${h / 1.4}" stroke="#4A3329" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-     <path d="M${x + (i % 2 ? -3 : 3)} ${h * .7} q${i % 2 ? -14 : 14} 6 ${i % 2 ? -18 : 18} 20" stroke="#4A3329" stroke-width="1.6" fill="none" stroke-linecap="round"/>`).join("");
-  const stones = [[150, 250, 13, 8], [40, 420, 10, 6], [165, 690, 15, 9], [60, 840, 12, 7], [110, 960, 9, 6], [30, 210, 7, 5]]
-    .map(([x, y, rx, ry]) => `<ellipse cx="${flip ? 200 - x : x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#38302B"/><ellipse cx="${(flip ? 200 - x : x) - rx / 3}" cy="${y - ry / 3}" rx="${rx / 2.6}" ry="${ry / 3}" fill="#4A403A"/>`).join("");
-  const specks = Array.from({ length: 60 }, (_, i) => `<circle cx="${(i * 47 + (flip ? 23 : 0)) % 200}" cy="${(i * 131) % 1000}" r="${.8 + (i % 3) * .5}" fill="${i % 2 ? "#3A2820" : "#16100C"}"/>`).join("");
-  return `<svg class="soil" viewBox="0 0 200 1000" preserveAspectRatio="none" aria-hidden="true">
-    <rect width="200" height="1000" fill="#2A1C15"/>${strata}${specks}${roots}${stones}
-    <rect width="200" height="16" fill="#2E6B34"/><path d="M0 16 ${Array.from({ length: 20 }, (_, i) => `l5 -8 l5 8`).join(" ")} V0 H0 Z" fill="#3A8A42"/>
+  const f = x => flip ? 240 - x : x, id = flip ? "R" : "L";
+  const band = (y, amp, c, edge) => `<path d="M0 ${y} C 40 ${y - amp}, 80 ${y + amp}, 120 ${y} S 200 ${y - amp}, 240 ${y + amp / 2} L240 900 L0 900 Z" fill="${c}"/>
+    <path d="M0 ${y} C 40 ${y - amp}, 80 ${y + amp}, 120 ${y} S 200 ${y - amp}, 240 ${y + amp / 2}" stroke="${edge}" stroke-width="2" fill="none" opacity=".55"/>`;
+  const pebbles = (cx, cy, n, seed) => Array.from({ length: n }, (_, i) => {
+    const x = cx + ((i * 37 + seed) % 46) - 23, y = cy + ((i * 23 + seed) % 26) - 13, r = 3 + ((i + seed) % 4);
+    return `<ellipse cx="${f(x)}" cy="${y}" rx="${r + 1.5}" ry="${r}" fill="${["#5A4A40", "#4A3D35", "#6B5A4E"][i % 3]}"/><ellipse cx="${f(x) - 1.2}" cy="${y - 1.2}" rx="${r / 2.4}" ry="${r / 3}" fill="#8A786A" opacity=".7"/>`;
+  }).join("");
+  const root = (x, len, dir) => `<path d="M${f(x)} 34 C ${f(x + dir * 8)} ${34 + len * .3}, ${f(x - dir * 10)} ${34 + len * .6}, ${f(x + dir * 4)} ${34 + len}" stroke="#5E412D" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M${f(x + dir * 2)} ${34 + len * .45} C ${f(x + dir * 18)} ${40 + len * .5}, ${f(x + dir * 26)} ${50 + len * .55}, ${f(x + dir * 34)} ${60 + len * .6}" stroke="#5E412D" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+    <path d="M${f(x - dir * 1)} ${34 + len * .75} q${flip ? 10 : -10} 8 ${flip ? 14 : -14} 22" stroke="#5E412D" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+  const blades = Array.from({ length: 34 }, (_, i) => { const x = i * 7.2 + (i % 3); const h = 10 + (i * 7) % 12; return `<path d="M${x} 36 q${(i % 2 ? 3 : -3)} ${-h / 2} ${(i % 2 ? 1 : -1)} ${-h}" stroke="${i % 3 ? "#4FAE4A" : "#3C8F3A"}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`; }).join("");
+  const flowers = [[30, 22, "#FFFFFF"], [118, 20, "#F5D46B"], [196, 24, "#FF9EC8"]].map(([x, y, c]) => `<g transform="translate(${f(x)} ${y})"><circle r="3.2" cx="-3" fill="${c}"/><circle r="3.2" cx="3" fill="${c}"/><circle r="3.2" cy="-3" fill="${c}"/><circle r="3.2" cy="3" fill="${c}"/><circle r="2" fill="#F5B83D"/></g>`).join("");
+  const mushroom = `<g transform="translate(${f(160)} 30)"><rect x="-3" y="-8" width="6" height="10" rx="2" fill="#F1E6D8"/><path d="M-11 -7 Q0 -21 11 -7 Z" fill="#E5484D"/><circle cx="-4" cy="-12" r="1.8" fill="#fff"/><circle cx="4" cy="-10" r="1.5" fill="#fff"/></g>`;
+  const worm = `<g transform="translate(${f(70)} 395)"><path d="M0 0 c8 -10 16 10 24 0 s16 10 24 0" stroke="#E8829A" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M0 0 c8 -10 16 10 24 0 s16 10 24 0" stroke="#F4A9BA" stroke-width="2" fill="none" stroke-linecap="round" stroke-dasharray="2 5"/><circle cx="${flip ? -1 : 49}" cy="-1" r="1.3" fill="#3A1F1F"/></g>`;
+  const fossil = `<g transform="translate(${f(180)} 610)" opacity=".85"><path d="M0 0 m-16 0 a16 16 0 1 0 32 0 a12 12 0 1 0 -24 0 a8 8 0 1 0 16 0 a4 4 0 1 0 -8 0" stroke="#9C8A78" stroke-width="2.4" fill="#4A3D35"/></g>`;
+  const bone = `<g transform="translate(${f(60)} 760) rotate(${flip ? 20 : -20})"><rect x="-16" y="-3.5" width="32" height="7" rx="3.5" fill="#E9DFCF"/><circle cx="-16" cy="-4" r="5" fill="#E9DFCF"/><circle cx="-16" cy="4" r="5" fill="#E9DFCF"/><circle cx="16" cy="-4" r="5" fill="#E9DFCF"/><circle cx="16" cy="4" r="5" fill="#E9DFCF"/></g>`;
+  const gem = (x, y, c) => `<g transform="translate(${f(x)} ${y})"><circle r="14" fill="${c}" opacity=".12"/><path d="M0 -9 L7 -2 L4 8 L-4 8 L-7 -2 Z" fill="${c}"/><path d="M0 -9 L2 -2 L-7 -2 Z" fill="#fff" opacity=".45"/></g>`;
+  return `<svg class="soil" viewBox="0 0 240 900" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="dirt${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4A3020"/><stop offset=".45" stop-color="#2E1D13"/><stop offset="1" stop-color="#140C08"/></linearGradient>
+      <radialGradient id="vig${id}" cx="${flip ? "100%" : "0%"}" cy="45%" r="90%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></radialGradient>
+    </defs>
+    <rect width="240" height="900" fill="url(#dirt${id})"/>
+    ${band(150, 14, "#3C2618", "#5C3E28")}${band(300, 18, "#33200F", "#4E3420")}${band(470, 12, "#2B1B10", "#45301F")}${band(640, 16, "#22150C", "#3A281A")}${band(800, 12, "#1A100A", "#2E2015")}
+    ${pebbles(50, 225, 6, 3)}${pebbles(190, 360, 5, 7)}${pebbles(110, 545, 7, 11)}${pebbles(40, 700, 5, 5)}${pebbles(200, 850, 6, 2)}
+    ${root(40, 150, 1)}${root(120, 100, -1)}${root(205, 170, -1)}
+    ${worm}${fossil}${bone}${gem(205, 470, "#B794FF")}${gem(30, 560, "#3DD6FF")}${gem(150, 740, "#F5B83D")}
+    <rect width="240" height="900" fill="url(#vig${id})"/>
+    <rect width="240" height="36" fill="#2F6E2E"/><path d="M0 36 Q60 30 120 36 T240 36 V44 H0 Z" fill="#4A3020"/>
+    ${blades}${flowers}${mushroom}
   </svg>`;
 }
 function buildBurrows() {
