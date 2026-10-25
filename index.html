@@ -384,6 +384,8 @@ select:focus { outline: none; border-color: var(--accent); }
 @media (min-width: 1000px) { .burrow { display: block; } }
 .tag.mayor { color: #F5D46B; }
 .mayorline { color: #F5D46B; }
+.burrow .tp-rise { transform: translateY(46px); transition: transform .45s cubic-bezier(.2, .9, .25, 1.2); }
+.burrow .tpeek.up .tp-rise { transform: translateY(0); }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -1878,26 +1880,33 @@ function buildGround() {
 }
 buildGround();
 // Side scenery on wide screens: a wall of layered soil with roots and stones, and holes the mascot pops out of.
-// A winding tunnel from the grass down to the bottom; two moles travel along it, upright, each with a skin.
+// A winding tunnel from the grass down to the bottom, with openings where a mole (wearing a skin) peeks out now and then.
 function tunnels(flip) {
   const f = x => flip ? 240 - x : x;
   const d = `M${f(70)} 40 C ${f(70)} 120, ${f(190)} 150, ${f(185)} 240 S ${f(40)} 330, ${f(60)} 430 S ${f(200)} 540, ${f(170)} 640 S ${f(50)} 740, ${f(90)} 920`;
-  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const crawler = (dur, begin, i) => `<g class="crawler">${still ? "" : `<animateMotion dur="${dur}s" begin="${begin}s" repeatCount="indefinite" path="${d}"/>`}<g class="skin" data-i="${i}" ${still ? `transform="translate(${f(185)} 240)"` : ""}></g></g>`;
+  const spots = [[185, 240], [60, 430], [170, 640]].map(([x, y], i) => {
+    const id = "tp" + (flip ? "R" : "L") + i;
+    return `<g class="tpeek" transform="translate(${f(x)} ${y + 6})">
+      <defs><clipPath id="${id}"><rect x="-34" y="-70" width="68" height="70"/></clipPath></defs>
+      <ellipse cx="0" cy="0" rx="25" ry="8" fill="#000"/>
+      <g clip-path="url(#${id})"><g class="tp-rise"><g class="tp-skin"></g></g></g>
+      <path d="M-26 0 A26 9 0 0 0 26 0" stroke="#6E4C34" stroke-width="4" fill="none"/>
+    </g>`;
+  }).join("");
   return `<path d="${d}" stroke="#5A3E2B" stroke-width="44" fill="none" stroke-linecap="round"/>
     <path d="${d}" stroke="#120B07" stroke-width="36" fill="none" stroke-linecap="round"/>
     <path d="${d}" stroke="#000" stroke-width="20" fill="none" stroke-linecap="round" opacity=".35"/>
-    ${crawler(34, 0, 0)}${crawler(34, -17, 1)}`;
+    ${spots}`;
 }
-// Put a (new) skin on each mole travelling in the tunnels.
-function dressCrawlers() {
-  document.querySelectorAll(".burrow .crawler .skin").forEach(g => {
-    const id = "c" + (++moleSeq);
-    g.innerHTML = `<circle r="19" fill="#120B07"/><svg x="-24" y="-24" width="48" height="48" viewBox="50 30 120 120">
-      <defs><clipPath id="cc${id}"><circle cx="110" cy="90" r="50"/></clipPath></defs>
-      <g clip-path="url(#cc${id})">${moleParts({ look: sceneLook(), mask: "off" }, id)}</g></svg>
-      <circle r="19.5" fill="none" stroke="#5A3E2B" stroke-width="2"/>`;
-  });
+// A mole pokes its head out of one tunnel opening.
+function tunnelPeek() {
+  const spots = [...document.querySelectorAll(".burrow .tpeek")].filter(g => !g.classList.contains("up") && g.closest(".burrow").getClientRects().length > 0);
+  if (!spots.length) return;
+  const g = spots[Math.floor(Math.random() * spots.length)], id = "t" + (++moleSeq);
+  g.querySelector(".tp-skin").innerHTML = `<g transform="translate(-36 -46) scale(.33)">${moleParts({ look: sceneLook(), mask: "off" }, id)}</g>`;
+  void g.getBoundingClientRect();
+  g.classList.add("up");
+  setTimeout(() => g.classList.remove("up"), 2600);
 }
 function burrowDecor(flip) {
   const f = x => flip ? 240 - x : x, id = flip ? "R" : "L";
@@ -1945,7 +1954,10 @@ function buildBurrows() {
     });
     document.body.appendChild(el);
   });
-  dressCrawlers(); setInterval(dressCrawlers, 17000);
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const loop = () => { tunnelPeek(); setTimeout(loop, 2500 + Math.random() * 3500); };
+    setTimeout(loop, 1500);
+  }
   const fit = () => document.documentElement.style.setProperty("--cw", (app.offsetWidth || 560) + "px");
   addEventListener("resize", fit); fit(); setInterval(fit, 1000);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
