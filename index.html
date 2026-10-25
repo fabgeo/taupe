@@ -351,6 +351,13 @@ body { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
 .avopts button.on span { color: var(--accent); }
 .avopts button.sw { width: 58px; }
 .swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); display: block; }
+select { font: inherit; color: var(--ink); background: var(--bg); border: 1.5px solid var(--line); border-radius: 10px; padding: 11px 12px; width: 100%; }
+select:focus { outline: none; border-color: var(--accent); }
+.selrow { display: flex; flex-direction: column; gap: 6px; grid-column: 1 / -1; }
+.props { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.prop { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.propgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.prop input[type=text] { background: var(--surface); }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -546,6 +553,9 @@ const ROLE_LABEL = { civil: "Civil", uc: "Taupe", ghost: "Fantôme" };
 const POINTS = { civil: 2, uc: 10, ghost: 6, traitor: 8, wrongVote: -3 };
 const DEFAULT_SETTINGS = { uc: 1, ghost: 0, manches: 3, tours: 2, theme: "classique", specialsFreq: "normal", timer: 30 };
 const NS = "taupe-fabgeo-v1/";
+// Suggestion box: a Google Apps Script web app linked to the owner's Google Sheet. Empty = feature hidden.
+const SHEET_URL = "";
+const THEME_PICK = [["classique", "Classique"], ["border", "Border"], ["film", "Film"], ["geek", "Geek"]];
 const BROKERS = window.TAUPE_BROKERS || ["wss://broker.emqx.io:8084/mqtt", "wss://broker.hivemq.com:8884/mqtt", "wss://test.mosquitto.org:8081/mqtt"];
 const LOCAL_HOST = "host";
 const MAX_CLUE = 20, TURN_MS = 30000, EXPRESS_MS = 10000;
@@ -1290,6 +1300,49 @@ function moleHead(opts = {}, cls = "") {
 const avatar = (uid, cls = "") => `<span class="av ${cls}">${moleHead({ look: lookOf(S.room?.players?.[uid]?.av) })}</span>`;
 const errLine = () => S.err ? `<p class="err">${esc(S.err)}</p>` : "";
 
+function themeSelect(id, cur) {
+  return `<select id="${id}">${THEME_PICK.map(([k, l]) => `<option value="${k}" ${k === cur ? "selected" : ""}>${l}</option>`).join("")}</select>`;
+}
+function viewPropose() {
+  const sent = S.proposeSent;
+  return `<div class="bar"><span class="label">Boîte à idées</span><button class="ghost" data-a="pageClose">Retour</button></div>
+  <div class="panel"><h2>Proposer une paire</h2>
+    <p class="small muted">Deux mots proches mais différents, connus de tous. Le créateur du jeu valide chaque proposition et choisit son thème.</p>
+    ${sent ? `<p class="invite">Merci ! Ta proposition « ${esc(sent)} » est envoyée. Elle sera examinée bientôt.</p>` : ""}
+    <div class="pairform">
+      <input type="text" id="propA" maxlength="40" placeholder="Mot 1 (ex. Chat)" autocomplete="off">
+      <input type="text" id="propB" maxlength="40" placeholder="Mot 2, proche (ex. Chien)" autocomplete="off">
+      <input type="text" id="propH" maxlength="40" placeholder="Indice large pour le Fantôme (facultatif)" autocomplete="off">
+      <label class="selrow"><span class="label">Thème conseillé</span>${themeSelect("propT", "classique")}</label>
+      <button class="primary" data-a="proposeSend" ${S.busy ? "disabled" : ""}>${S.busy ? "Envoi…" : "Envoyer ma proposition"}</button>
+    </div>
+    ${errLine()}</div>`;
+}
+function viewAdmin() {
+  const A = S.admin || {};
+  if (!A.ok) return `<div class="bar"><span class="label">Admin</span><button class="ghost" data-a="pageClose">Retour</button></div>
+  <div class="panel"><h2>Espace admin</h2><p class="small muted">Réservé au créateur du jeu.</p>
+    <div class="row"><input type="password" id="adminPw" class="grow" placeholder="Mot de passe" data-enter="adminLogin" autocomplete="current-password">
+      <button class="primary" data-a="adminLogin" ${S.busy ? "disabled" : ""}>Entrer</button></div>${errLine()}</div>`;
+  const card = p => `<li class="prop">
+      <div class="propgrid">
+        <input type="text" id="a-${esc(p.id)}" value="${esc(p.a)}" maxlength="40" aria-label="Mot 1">
+        <input type="text" id="b-${esc(p.id)}" value="${esc(p.b)}" maxlength="40" aria-label="Mot 2">
+        <input type="text" id="h-${esc(p.id)}" value="${esc(p.hint)}" maxlength="40" placeholder="Indice Fantôme" aria-label="Indice du Fantôme">
+        ${themeSelect("t-" + p.id, p.theme)}
+      </div>
+      <span class="small muted">Par ${esc(p.author || "anonyme")} · thème conseillé : ${esc((THEME_PICK.find(t => t[0] === p.theme) || [, "?"])[1])}</span>
+      <div class="row"><button class="primary grow" data-a="adminReview" data-id="${esc(p.id)}" data-d="accept">Accepter</button>
+        <button class="ghost grow" data-a="adminReview" data-id="${esc(p.id)}" data-d="reject">Refuser</button></div></li>`;
+  return `<div class="bar"><span class="label">Admin</span><span class="row barbtns"><button class="ghost" data-a="adminRefresh">Actualiser</button><button class="ghost" data-a="pageClose">Retour</button></span></div>
+  <div class="panel"><div class="status"><h2>Propositions</h2><span class="label"><b>${A.pending.length}</b> en attente</span></div>
+    <p class="small muted">Corrige les mots si besoin, choisis le thème, puis accepte ou refuse.</p>
+    ${A.pending.length ? `<ul class="props">${A.pending.map(card).join("")}</ul>` : `<p class="small muted">Aucune proposition en attente.</p>`}
+    ${errLine()}</div>
+  <div class="panel"><div class="status"><h3>Paires acceptées</h3><span class="label"><b>${A.accepted.length}</b></span></div>
+    ${A.accepted.length ? `<ul class="players">${A.accepted.map(p => `<li><span class="name">${esc(p.a)} / ${esc(p.b)} <span class="small muted">(${esc(p.finalTheme)})</span></span>
+      <button class="ghost x" data-a="adminReview" data-id="${esc(p.id)}" data-d="remove">Retirer</button></li>`).join("")}</ul>` : `<p class="small muted">Aucune pour l'instant.</p>`}</div>`;
+}
 function viewHome() {
   return `<div class="brand"><div class="logo">${MOLE("L", false)}<h1>Tau<span class="c">pe</span></h1>${MOLE("R", true)}</div>
     <p class="muted">Tout le monde reçoit un mot. Sauf que certains ont un mot presque pareil, et le Fantôme n'en a aucun.</p></div>
@@ -1321,6 +1374,9 @@ function viewHome() {
     </div>
     <p class="small muted">Points : civil gagnant ${POINTS.civil}, Taupe gagnante ${POINTS.uc}, Fantôme gagnant ${POINTS.ghost}.</p>
   </div>
+  ${SHEET_URL ? `<div class="panel"><div class="status"><h3>Une idée de paire ?</h3><span class="label">Boîte à idées</span></div>
+    <p class="small muted">Propose deux mots proches. S'ils sont validés, ils arrivent dans le jeu pour tout le monde.</p>
+    <button data-a="proposeOpen">💡 Proposer une paire</button></div>` : ""}
   <p class="credits">Taupe est un jeu amateur et gratuit, sans lien avec les marques, œuvres et personnes citées comme mots à deviner.<br>
     Images : <a href="https://fr.wikipedia.org" target="_blank" rel="noopener">Wikipédia</a> et Wikimedia Commons, sous licences libres (auteurs et licences indiqués sur la page de chaque image).</p>`;
 }
@@ -1765,7 +1821,9 @@ function render() {
     const el = document.getElementById(id); return el ? [id, el.value, document.activeElement === el, el.selectionStart] : null;
   }).filter(Boolean);
   let html, screen;
-  if (!S.mode) { html = viewHome(); screen = "home"; }
+  if (!S.mode && S.page === "propose") { html = viewPropose(); screen = "propose"; }
+  else if (!S.mode && S.page === "admin") { html = viewAdmin(); screen = "admin"; }
+  else if (!S.mode) { html = viewHome(); screen = "home"; }
   else if (!S.room) {
     screen = "wait";
     html = S.net === "waiting" ? `${bar()}<div class="panel reveal stack">${moleScene({}, "peek")}<p class="big">En attente de l'hôte…</p>
@@ -1860,6 +1918,41 @@ const ACTIONS = {
   pickAv: el => send({ type: "avatar", uid: el.dataset.u, av: +el.dataset.v }),
   cycleAv: el => { S.avEdit = el.dataset.u; render(); },
   avClose: () => { S.avEdit = null; render(); },
+  proposeOpen: () => { S.page = "propose"; S.proposeSent = ""; S.err = ""; render(); },
+  pageClose: () => { S.page = null; S.err = ""; render(); },
+  proposeSend: async () => {
+    const a = (document.getElementById("propA")?.value || "").trim(), b = (document.getElementById("propB")?.value || "").trim();
+    if (!a || !b) { S.err = "Écris les deux mots."; render(); return; }
+    const hint = (document.getElementById("propH")?.value || "").trim(), theme = document.getElementById("propT")?.value || "classique";
+    S.busy = true; S.err = ""; render();
+    try {
+      const j = await sheetPost({ action: "propose", a, b, hint, theme, author: S.pseudo || "" });
+      if (j.ok) { S.proposeSent = a + " / " + b; ["propA", "propB", "propH"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; }); }
+      else S.err = j.error || "L'envoi n'a pas marché.";
+    } catch { S.err = "L'envoi n'a pas marché. Vérifie ta connexion internet."; }
+    S.busy = false; render();
+  },
+  adminLogin: async () => {
+    const pw = (document.getElementById("adminPw")?.value || "").trim(); if (!pw) return;
+    S.adminPw = pw; await ACTIONS.adminRefresh();
+  },
+  adminRefresh: async () => {
+    S.busy = true; S.err = ""; render();
+    try {
+      const j = await sheetPost({ action: "list", pw: S.adminPw });
+      if (j.ok) S.admin = { ok: true, pending: j.pending, accepted: j.accepted };
+      else { S.admin = null; S.err = j.error || "Accès refusé."; }
+    } catch { S.err = "Impossible de joindre le tableau Google."; }
+    S.busy = false; render();
+  },
+  adminReview: async el => {
+    const id = el.dataset.id, d = el.dataset.d, val = k => document.getElementById(k + "-" + id)?.value || "";
+    try {
+      const j = await sheetPost({ action: "review", pw: S.adminPw, id, decision: d, a: val("a"), b: val("b"), hint: val("h"), theme: val("t") });
+      if (!j.ok) { S.err = j.error || "Ça n'a pas marché."; render(); return; }
+    } catch { S.err = "Impossible de joindre le tableau Google."; render(); return; }
+    await ACTIONS.adminRefresh();
+  },
   editOpen: () => { S.editing = true; S.err = ""; render(); },
   editClose: () => { S.editing = false; S.err = ""; render(); },
   peekStart: () => { S.peek = { step: "pick" }; render(); },
@@ -1908,9 +2001,26 @@ function loadSaved() {
   try { const l = JSON.parse(lsGet("uc_local") || "null"); S.savedLocal = l && l.status && l.status !== "final" ? l : null; } catch { S.savedLocal = null; }
   try { const h = JSON.parse(lsGet("uc_hostgame") || "null"); S.savedHost = h && h.G && Date.now() - h.at < 6 * 3600e3 ? h : null; } catch { S.savedHost = null; }
 }
+// Pairs accepted by the owner join their theme for everyone.
+function addCommunityPairs(list) {
+  if (!Array.isArray(list)) return;
+  for (const p of list) {
+    const t = THEMES[p.theme]; if (!t || t.mix || !p.a || !p.b) continue;
+    const words = new Set(Object.values(THEMES).flatMap(x => x.pairs.flatMap(q => [norm(q[0]), norm(q[1])])));
+    if (words.has(norm(p.a)) || words.has(norm(p.b))) continue;
+    t.pairs.push([String(p.a).slice(0, 40), String(p.b).slice(0, 40), String(p.hint || "mot proposé").slice(0, 40)]);
+  }
+}
+try { addCommunityPairs(JSON.parse(lsGet("uc_community") || "[]")); } catch {}
+if (SHEET_URL) fetch(SHEET_URL).then(r => r.json()).then(j => { if (j && j.ok) { lsSet("uc_community", JSON.stringify(j.accepted)); addCommunityPairs(j.accepted); } }).catch(() => {});
+async function sheetPost(body) {
+  const r = await fetch(SHEET_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
+  return r.json();
+}
 loadSaved();
 const qRoom = (new URLSearchParams(location.search).get("room") || "").toUpperCase();
 S.prefill = /^[A-Z]{4}$/.test(qRoom) ? qRoom : "";
+if (new URLSearchParams(location.search).has("admin")) S.page = "admin";
 const qB = parseInt(new URLSearchParams(location.search).get("b") || "", 10);
 S.brokerHint = Number.isInteger(qB) ? qB : null;
 render();
