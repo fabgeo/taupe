@@ -117,9 +117,10 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .set .hint { font-size: .78rem; color: var(--muted); }
 
 /* Secret word slip: deliberately small */
-.slip { align-self: flex-start; width: 100%; max-width: 260px; border: 1.5px dashed #3A3A46; background: var(--surface); border-radius: 12px;
+.slip { align-self: flex-start; width: auto; min-width: min(260px, 100%); max-width: 100%; border: 1.5px dashed #3A3A46; background: var(--surface); border-radius: 12px;
   padding: 11px 15px; text-align: left; display: flex; flex-direction: column; gap: 2px; font-weight: 400; }
-.slip .word { font-family: var(--f-display); font-weight: 700; font-size: 1.15rem; overflow-wrap: anywhere; }
+.slip .word { font-family: var(--f-display); font-weight: 700; font-size: 1.15rem; white-space: nowrap; }
+.slip .word.long { font-size: .98rem; } .slip .word.xlong { font-size: .84rem; }
 .slip.hidden .word { letter-spacing: .25em; color: #4D4B58; }
 .slip.shown { border-style: solid; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(245,184,61,.08), 0 10px 30px -12px var(--glow); }
 .slip.shown .word { color: var(--accent); }
@@ -165,7 +166,7 @@ a.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .words { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 @media (max-width: 420px) { .words { grid-template-columns: 1fr; } }
 .words div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-width: 0; }
-.words b { font-family: var(--f-display); display: block; overflow-wrap: anywhere; }
+.words b { font-family: var(--f-display); display: block; overflow-wrap: break-word; hyphens: none; }
 .words .c b { color: var(--civil); } .words .u b { color: var(--mask); } .words .g b { color: var(--ghost); }
 
 .scores { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
@@ -326,7 +327,8 @@ body { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
 .ground { position: fixed; left: 0; right: 0; bottom: 0; height: calc(46px + env(safe-area-inset-bottom, 0px)); z-index: 0; pointer-events: none;
   background: radial-gradient(circle at 10% 30%, #4A3329 0 3px, transparent 4px), radial-gradient(circle at 70% 60%, #2C1E18 0 2px, transparent 3px), linear-gradient(180deg, #2A1C16, #1A110D);
   background-size: 120px 46px, 90px 46px, auto; border-top: 2px solid #3A2820; }
-.ground .hole { position: absolute; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: 84px; transform: translateX(-50%); }
+.ground .hole { position: absolute; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: 84px; transform: translateX(-50%); pointer-events: auto; cursor: pointer; padding: 0; border: 0; background: none; border-radius: 0; }
+.ground .hole:focus-visible { outline: 2px solid var(--accent); }
 .ground .mole { width: 84px; height: auto; display: block; }
 .ground .mole-rise { transform: translateY(80px); animation: none !important; transition: transform .45s cubic-bezier(.2, .9, .25, 1.2); }
 .ground .mole-paws { opacity: 0; transition: opacity .2s; }
@@ -358,6 +360,16 @@ select:focus { outline: none; border-color: var(--accent); }
 .prop { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
 .propgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .prop input[type=text] { background: var(--surface); }
+.cols { display: flex; flex-direction: column; gap: 16px; }
+.maincol, .sidecol { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.chatpanel { background: linear-gradient(180deg, rgba(61,214,255,.05), transparent 50%), var(--surface); border-color: rgba(61,214,255,.25); }
+.chatpanel h3 { color: #8FE4FF; }
+@media (min-width: 900px) {
+  #app.wide { max-width: 980px; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; gap: 20px; }
+  .sidecol { position: sticky; top: calc(16px + env(safe-area-inset-top, 0px)); }
+  .sidecol .chat { max-height: 52vh; }
+}
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -424,7 +436,7 @@ const THEMES = {
     ["Champignons magiques","LSD","trip"],["Évasion","Cavale","fuite"],["Purgatoire","Enfer","au-delà"],
     ["Messe noire","Sabbat","sorcellerie"],["Fétichisme","Voyeurisme","penchant"],["Cubi","Magnum","vin"],
     ["Rhum","Whisky","alcool"],["Champagne","Prosecco","bulles"],["Mojito","Caïpirinha","cocktail"],["Apéro","Happy hour","soirée"],
-    ["Alcootest","Éthylotest","police"],["Coma éthylique","Black-out","soirée"],["Cuite","Murge","alcool"],["Sextoy","Vibromasseur","tiroir"],
+    ["Alcootest","Éthylotest","police"],["Coma éthylique","Black-out","soirée"],["Cuite","Murge","alcool"],["Sextoy","Godemiché","tiroir"],
     ["Lubrifiant","Huile de massage","tiroir"],["Kamasutra","Positions","nuit"],["Missionnaire","Levrette","position"],["Strip-club","Peep-show","nuit"],
     ["Escort","Gigolo","métier"],["Crush","Coup de foudre","cœur"],["Ex toxique","Manipulateur","couple"],["Tromper","Cocu","couple"],
     ["Demande en mariage","Bague de fiançailles","couple"],["Lune de miel","Voyage de noces","couple"],["Pension alimentaire","Garde alternée","divorce"],["Amende","PV","police"],
@@ -1508,6 +1520,7 @@ function viewAvPick() {
   <div class="panel"><div class="status"><h2>Taupe de ${esc(p.name)}</h2>${avatar(uid, "lg")}</div>${avatarGrid(uid)}
     <button class="primary" data-a="avClose">Terminé</button></div>`;
 }
+const wordSize = w => String(w || "").length > 20 ? "xlong" : String(w || "").length > 13 ? "long" : "";
 function traitorLine(uid) {
   const r = S.room;
   if (!r.traitor || r.traitor !== uid || ["roundEnd", "final"].includes(r.status)) return "";
@@ -1524,7 +1537,7 @@ function slip(uid, key) {
   const word = isGhost ? null : r.words[mine.role];
   const pic = isGhost ? `<span class="pic ghostpic">${moleHead({ ghost: true })}</span>` : wordPic(word, r.words.hint || "", r.words.theme || r.settings.theme);
   return `<button class="slip shown withpic ${isGhost ? "ghostslip" : ""}" data-a="reveal" aria-pressed="true">${pic}<span class="txt"><span class="label">${isGhost ? (isLocal() ? esc(nameOf(uid)) + " est le Fantôme" : "Tu es le Fantôme") : who}</span>
-    <span class="word">${esc(isGhost ? "Indice : " + r.words.hint : word)}</span>${traitorLine(uid)}<span class="sub">Touche pour cacher</span></span></button>`;
+    <span class="word ${wordSize(isGhost ? "Indice : " + r.words.hint : word)}">${esc(isGhost ? "Indice : " + r.words.hint : word)}</span>${traitorLine(uid)}<span class="sub">Touche pour cacher</span></span></button>`;
 }
 const mySlip = () => isLocal() ? "" : slip(S.uid, S.code + S.room.manche);
 function specialBanner() {
@@ -1557,13 +1570,16 @@ function showReaction(m) {
 const reactBar = () => isLocal() ? "" : `<div class="reacts" aria-label="Réactions">${REACTIONS.map(e => `<button data-a="react" data-e="${e}" aria-label="Réagir ${e}">${e}</button>`).join("")}</div>`;
 function chatPanel() {
   if (isLocal()) return "";
+  S.chatSide = chatPanelHtml(); return "";
+}
+function chatPanelHtml() {
   const r = S.room, msgs = r.chat || [];
   const muted = ["clues", "vote", "result", "ghostGuess"].includes(r.status) && (r.inRound || []).includes(S.uid) && !r.alive.includes(S.uid);
-  return `<div class="panel"><div class="status"><h3>Débat</h3><span class="label">Accuse, défends-toi, bluffe</span></div>
+  return `<div class="panel chatpanel"><div class="status"><h3>💬 Débat</h3><span class="label">Chat du groupe</span></div>
     <ul class="chat" id="chatList">${msgs.length ? msgs.map((m, i) => `${m.manche && m.manche !== msgs[i - 1]?.manche ? `<li class="sep">Manche ${m.manche}</li>` : ""}<li class="${m.uid === S.uid ? "me" : ""}"><b>${esc(nameOf(m.uid))}</b><span>${esc(m.text)}</span></li>`).join("")
       : `<li class="empty">Aucun message pour l'instant.</li>`}</ul>
     ${muted ? `<p class="small muted">Tu es éliminé·e : tu ne peux plus écrire jusqu'à la fin de la manche.</p>`
-      : `<div class="row"><input type="text" id="chatInput" class="grow" maxlength="120" placeholder="Écris un message…" data-enter="chat" autocomplete="off">
+      : `<div class="row"><input type="text" id="chatInput" class="grow" maxlength="120" placeholder="Message au groupe…" data-enter="chat" autocomplete="off">
       <button data-a="chat">Envoyer</button></div>`}
     ${reactBar()}</div>`;
 }
@@ -1780,17 +1796,18 @@ function mancheIntro(n, total) {
   setTimeout(() => el.remove(), 1900);
 }
 // Grass thrown by the two moles on the final podium.
-function throwGrass() {
+function throwGrass(els, waves = 6, up = false) {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  document.querySelectorAll(".thrower").forEach((m, side) => {
+  [...(els || document.querySelectorAll(".thrower"))].forEach((m, side) => {
     const r = m.getBoundingClientRect();
     if (!r.width) return;
-    for (let wave = 0; wave < 6; wave++) setTimeout(() => {
+    if (up) side = Math.random() < .5 ? 0 : 1;
+    for (let wave = 0; wave < waves; wave++) setTimeout(() => {
       for (let i = 0; i < 16; i++) {
         const g = document.createElement("i");
         g.className = "grass";
         g.style.left = (r.left + r.width / 2) + "px"; g.style.top = (r.top + r.height * .55) + "px";
-        g.style.setProperty("--dx", ((side ? -1 : 1) * (40 + Math.random() * 160)) + "px");
+        g.style.setProperty("--dx", (up ? (Math.random() * 240 - 120) : (side ? -1 : 1) * (40 + Math.random() * 160)) + "px");
         g.style.setProperty("--dy", (-(90 + Math.random() * 170)) + "px");
         g.style.setProperty("--rot", (Math.random() * 720 - 360) + "deg");
         g.style.background = ["#4CCB6A", "#3AA655", "#7BDD6E", "#2E8B47"][i % 4];
@@ -1804,8 +1821,14 @@ function throwGrass() {
 function buildGround() {
   const el = document.createElement("div");
   el.className = "ground"; el.setAttribute("aria-hidden", "true");
-  el.innerHTML = [18, 52, 84].map(x => `<div class="hole" style="left:${x}%">${moleScene({}, "ground-mole")}</div>`).join("");
+  el.innerHTML = [18, 52, 84].map(x => `<button class="hole" style="left:${x}%" aria-label="Taupe">${moleScene({}, "ground-mole")}</button>`).join("");
   document.body.appendChild(el);
+  el.addEventListener("click", e => {
+    const h = e.target.closest(".hole"); if (!h) return;
+    h.classList.add("pop"); clearTimeout(h.popT);
+    setTimeout(() => throwGrass([h], 2, true), 250);
+    h.popT = setTimeout(() => h.classList.remove("pop"), 2600);
+  });
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const pop = () => {
     const holes = el.querySelectorAll(".hole"), h = holes[Math.floor(Math.random() * holes.length)];
@@ -1820,7 +1843,7 @@ function render() {
   const keep = ["pseudo", "joinCode", "clueInput", "guessInput", "newPlayer", "chatInput", "pairA", "pairB", "pairH"].map(id => {
     const el = document.getElementById(id); return el ? [id, el.value, document.activeElement === el, el.selectionStart] : null;
   }).filter(Boolean);
-  let html, screen;
+  let html, screen; S.chatSide = "";
   if (!S.mode && S.page === "propose") { html = viewPropose(); screen = "propose"; }
   else if (!S.mode && S.page === "admin") { html = viewAdmin(); screen = "admin"; }
   else if (!S.mode) { html = viewHome(); screen = "home"; }
@@ -1841,6 +1864,8 @@ function render() {
     if (S.avEdit) screen = "av";
     html = S.avEdit ? viewAvPick() : S.editing ? viewEdit() : S.peek ? viewPeek() : ({ lobby: viewLobby, deal: viewDeal, clues: viewClues, vote: viewVote, result: viewResult, ghostGuess: viewGhostGuess, roundEnd: viewRoundEnd, final: viewFinal }[S.room.status] || viewLobby)();
   }
+  if (S.chatSide) { html = `<div class="cols"><div class="maincol">${html}</div><aside class="sidecol">${S.chatSide}</aside></div>`; S.chatSide = ""; }
+  app.classList.toggle("wide", html.includes('class="cols"'));
   const chatEl = document.getElementById("chatList"), stick = !chatEl || chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 40;
   app.innerHTML = html;
   const chatNew = document.getElementById("chatList"); if (chatNew && stick) chatNew.scrollTop = chatNew.scrollHeight;
