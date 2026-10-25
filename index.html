@@ -1729,7 +1729,7 @@ function throwGrass() {
   document.querySelectorAll(".thrower").forEach((m, side) => {
     const r = m.getBoundingClientRect();
     if (!r.width) return;
-    for (let wave = 0; wave < 3; wave++) setTimeout(() => {
+    for (let wave = 0; wave < 6; wave++) setTimeout(() => {
       for (let i = 0; i < 16; i++) {
         const g = document.createElement("i");
         g.className = "grass";
