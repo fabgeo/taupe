@@ -453,7 +453,7 @@ const THEMES = {
     ["Éthylotest","Test salivaire","police"],["Coma éthylique","Black-out","soirée"],["Cuite","Gueule de bois","alcool"],["Sextoy","Godemiché","tiroir"],
     ["Lubrifiant","Huile de massage","tiroir"],["Kamasutra","Positions","nuit"],["Missionnaire","Levrette","position"],["Strip-club","Peep-show","nuit"],
     ["Escort","Gigolo","métier"],["Crush","Coup de foudre","cœur"],["Ex toxique","Manipulateur","couple"],["Tromper","Cocu","couple"],
-    ["Demande en mariage","Bague de fiançailles","couple"],["Lune de miel","Voyage de noces","couple"],["Pension alimentaire","Garde alternée","divorce"],["Amende","PV","police"],
+    ["Demande en mariage","Bague de fiançailles","couple"],["Lune de miel","Nuit de noces","couple"],["Pension alimentaire","Garde alternée","divorce"],["Amende","PV","police"],
     ["Radar","Flash","route"],["Casier judiciaire","Bracelet électronique","justice"],["Braquage","Cambriolage","crime"],["Mafia","Cartel","crime"],
     ["Pot-de-vin","Corruption","argent"],["Dealer","Reseller","rue"],["Embaumement","Taxidermie","conservation"],
     ["Tueur à gages","Mercenaire","meurtre"],["Alibi","Témoin","enquête"],["Médium","Voyante","au-delà"],["Ouija","Spiritisme","au-delà"],
@@ -1842,9 +1842,12 @@ function throwGrass(els, waves = 6, up = false) {
   });
 }
 // A mole popping out of a scenery hole wears a skin: mostly those of the players in the game, otherwise any of the 16.
-function popHole(h) {
+function sceneLook() {
   const ps = S.room && S.mode ? Object.values(S.room.players || {}).filter(p => p.av != null) : [];
-  const look = ps.length && Math.random() < .8 ? lookOf(ps[Math.floor(Math.random() * ps.length)].av) : AVATARS[Math.floor(Math.random() * AVATARS.length)];
+  return ps.length && Math.random() < .8 ? lookOf(ps[Math.floor(Math.random() * ps.length)].av) : AVATARS[Math.floor(Math.random() * AVATARS.length)];
+}
+function popHole(h) {
+  const look = sceneLook();
   h.classList.remove("pop");
   h.innerHTML = moleScene({ look, mask: "off" }, "ground-mole");
   void h.offsetWidth;
@@ -1872,6 +1875,27 @@ function buildGround() {
 }
 buildGround();
 // Side scenery on wide screens: a wall of layered soil with roots and stones, and holes the mascot pops out of.
+// A winding tunnel from the grass down to the bottom; two moles travel along it, upright, each with a skin.
+function tunnels(flip) {
+  const f = x => flip ? 240 - x : x;
+  const d = `M${f(70)} 40 C ${f(70)} 120, ${f(190)} 150, ${f(185)} 240 S ${f(40)} 330, ${f(60)} 430 S ${f(200)} 540, ${f(170)} 640 S ${f(50)} 740, ${f(90)} 920`;
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const crawler = (dur, begin, i) => `<g class="crawler">${still ? "" : `<animateMotion dur="${dur}s" begin="${begin}s" repeatCount="indefinite" path="${d}"/>`}<g class="skin" data-i="${i}" ${still ? `transform="translate(${f(185)} 240)"` : ""}></g></g>`;
+  return `<path d="${d}" stroke="#5A3E2B" stroke-width="44" fill="none" stroke-linecap="round"/>
+    <path d="${d}" stroke="#120B07" stroke-width="36" fill="none" stroke-linecap="round"/>
+    <path d="${d}" stroke="#000" stroke-width="20" fill="none" stroke-linecap="round" opacity=".35"/>
+    ${crawler(34, 0, 0)}${crawler(34, -17, 1)}`;
+}
+// Put a (new) skin on each mole travelling in the tunnels.
+function dressCrawlers() {
+  document.querySelectorAll(".burrow .crawler .skin").forEach(g => {
+    const id = "c" + (++moleSeq);
+    g.innerHTML = `<circle r="19" fill="#120B07"/><svg x="-24" y="-24" width="48" height="48" viewBox="50 30 120 120">
+      <defs><clipPath id="cc${id}"><circle cx="110" cy="90" r="50"/></clipPath></defs>
+      <g clip-path="url(#cc${id})">${moleParts({ look: sceneLook(), mask: "off" }, id)}</g></svg>
+      <circle r="19.5" fill="none" stroke="#5A3E2B" stroke-width="2"/>`;
+  });
+}
 function burrowDecor(flip) {
   const f = x => flip ? 240 - x : x, id = flip ? "R" : "L";
   const band = (y, amp, c, edge) => `<path d="M0 ${y} C 40 ${y - amp}, 80 ${y + amp}, 120 ${y} S 200 ${y - amp}, 240 ${y + amp / 2} L240 900 L0 900 Z" fill="${c}"/>
@@ -1900,6 +1924,7 @@ function burrowDecor(flip) {
     ${pebbles(50, 225, 6, 3)}${pebbles(190, 360, 5, 7)}${pebbles(110, 545, 7, 11)}${pebbles(40, 700, 5, 5)}${pebbles(200, 850, 6, 2)}
     ${root(40, 150, 1)}${root(120, 100, -1)}${root(205, 170, -1)}
     ${worm}${fossil}${bone}${gem(205, 470, "#B794FF")}${gem(30, 560, "#3DD6FF")}${gem(150, 740, "#F5B83D")}
+    ${tunnels(flip)}
     <rect width="240" height="900" fill="url(#vig${id})"/>
     <rect width="240" height="36" fill="#2F6E2E"/><path d="M0 36 Q60 30 120 36 T240 36 V44 H0 Z" fill="#4A3020"/>
     ${blades}${flowers}${mushroom}
@@ -1917,6 +1942,7 @@ function buildBurrows() {
     });
     document.body.appendChild(el);
   });
+  dressCrawlers(); setInterval(dressCrawlers, 17000);
   const fit = () => document.documentElement.style.setProperty("--cw", (app.offsetWidth || 560) + "px");
   addEventListener("resize", fit); fit(); setInterval(fit, 1000);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
