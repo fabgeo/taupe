@@ -913,7 +913,6 @@ function viewFor(G, uid) {
   const ended = ["roundEnd", "final"].includes(G.status);
   if (!ended && G.special && SPECIALS[G.special]?.secret) v.special = null;
   if (!ended) v.traitor = G.traitor === uid ? uid : null;
-  v.hasMayor = !!G.mayor;
   if (!ended) { v.mayor = G.mayor === uid ? uid : null; if (v.lastVotes) delete v.lastVotes.mayorUid; }
   v.traitorInfo = !ended && G.traitor === uid ? Object.keys(G.roles).filter(id => G.roles[id].role !== "civil") : null;
   if (G.special === "simul" && G.status === "clues") {
@@ -1409,7 +1408,7 @@ function viewHome() {
       <span class="tag uc">Taupe</span><span>Ton mot est proche mais différent. Tu ne sais pas que tu es la Taupe : fonds-toi dans la masse.</span>
       <span class="tag ghost">Fantôme</span><span>Pas de mot, juste un indice très large. Bluffe. Si on t'élimine, devine le mot des civils pour gagner.</span>
     </div>
-    <p class="small muted">Lors d'une manche Traître (en ligne), un maire secret est tiré au sort : lui seul le sait, et en cas d'égalité au vote, sa voix départage.</p>
+    <p class="small muted">Lors d'une manche Traître (en ligne), un joueur devient maire en secret : lui seul le sait, et en cas d'égalité au vote, sa voix départage.</p>
     <p class="small muted">Points : civil gagnant ${POINTS.civil}, Taupe gagnante ${POINTS.uc}, Fantôme gagnant ${POINTS.ghost}.</p>
   </div>
   ${SHEET_URL ? `<div class="panel"><div class="status"><h3>Une idée de paire ?</h3><span class="label">Boîte à idées</span></div>
@@ -1698,7 +1697,7 @@ function viewVote() {
   <div class="panel"><div class="status"><h2>Vote</h2><span class="label"><b>${vs.length}</b> / ${r.alive.length} ont voté</span></div>
     <p class="small muted">${can ? "Qui est l'imposteur ? Le joueur le plus désigné est éliminé." : "Tu es éliminé·e ou spectateur. Regarde les autres voter."}</p>
     ${r.mayor === S.uid && r.alive.includes(S.uid) ? `<p class="small mayorline">🎖️ Tu es le maire (secret) : en cas d'égalité, ta voix départage. Personne ne le sait.</p>`
-      : r.hasMayor ? `<p class="small mayorline">🎖️ Un maire secret départage les égalités.</p>` : ""}
+      : ""}
     <div class="votes">${r.alive.filter(id => id !== S.uid).map(id => `<button data-a="vote" data-u="${esc(id)}" class="${my?.target === id ? "mine" : ""}" ${!can ? "disabled" : ""}>
       <span class="vn">${avatar(id, "sm")}${esc(nameOf(id))}</span><span class="n">${done.has(id) ? "a voté" : ""}</span></button>`).join("")}</div>
     ${isHost() ? `<button class="ghost" data-a="resolve" ${vs.length ? "" : "disabled"}>Dépouiller les votes maintenant</button>` : ""}
@@ -1774,7 +1773,7 @@ function viewRoundEnd() {
       none: moleScene({ mask: "off", mood: "surprised" }, "reveal-mole small-mole") }[r.winner] || ""}
     <p class="big win-${r.winner}">${title}</p>${r.lastOut ? `<div class="stack">${outLine(r.lastOut)}</div>` : ""}</div>
   ${specialBanner()}
-  ${r.mayor && r.hasMayor !== false && !isLocal() ? `<p class="small mayorline">🎖️ Le maire secret était ${esc(nameOf(r.mayor))}${you(r.mayor)}.</p>` : ""}
+  ${r.mayor && !isLocal() ? `<p class="small mayorline">🎖️ Le maire secret était ${esc(nameOf(r.mayor))}${you(r.mayor)}.</p>` : ""}
   ${r.special === "traitor" && r.traitor ? `<p class="invite">🗡️ Le Traître était <b class="plain">${esc(nameOf(r.traitor))}${you(r.traitor)}</b>.</p>` : ""}
   ${r.winner === "skipped" ? `<p class="small muted">L'hôte a passé cette manche : aucun point n'est compté.</p>` : ""}
   ${r.winner === "none" ? `<p class="small muted">${r.lastOut && !r.lastOut.tie ? `${esc(nameOf(r.lastOut.uid))} a été éliminé·e à tort et perd ${-POINTS.wrongVote * (r.special === "double" ? 2 : 1)} points.` : "Égalité : personne ne perd de points."}</p>` : ""}
