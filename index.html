@@ -795,6 +795,12 @@ function apply(G, actor, a) {
     }
     case "leave": if (!host) removePlayer(G, actor); return "";
     case "kick": if (host && a.uid !== G.host) removePlayer(G, a.uid); return "";
+    case "rename": {
+      const who = host && a.uid && G.players[a.uid] ? a.uid : actor, name = String(a.name || "").trim().slice(0, 20);
+      if (!G.players[who] || !name) return "";
+      if (listPlayers(G).some(p => p.uid !== who && norm(p.name) === norm(name))) return "Ce pseudo est déjà pris.";
+      G.players[who].name = name; return "";
+    }
     case "avatar": {
       const who = host && a.uid && G.players[a.uid] ? a.uid : actor;
       if (G.players[who] && Number.isInteger(a.av) && AVATARS[a.av]) G.players[who].av = a.av;
@@ -1527,13 +1533,16 @@ function viewLobby() {
       ${avatar(p.uid)}<span class="name">${esc(p.name)}${you(p.uid)}</span>
       ${p.uid === S.room.host ? `<span class="tag host">Hôte</span>` : ""}
       ${isHost() && p.uid !== S.uid ? `${kickBtn(p.uid)}` : ""}</li>`).join("")}</ul></div>
+  ${settingsPanel()}
   ${avatarPanel()}
-  ${customPanel()}
-  ${settingsPanel()}`;
+  ${customPanel()}`;
 }
 function avatarPanel() {
   const me = S.room.players[S.uid]; if (!me) return "";
-  return `<div class="panel"><h2>Ta taupe</h2>${avatarGrid(S.uid)}</div>`;
+  return `<div class="panel"><h2>Toi</h2>
+    <div class="row"><input type="text" id="renameInput" class="grow" maxlength="20" value="${esc(me.name)}" aria-label="Ton pseudo" data-enter="rename" autocomplete="nickname">
+      <button data-a="rename" data-u="${esc(S.uid)}">Changer de pseudo</button></div>
+    <span class="label">Ta taupe</span>${avatarGrid(S.uid)}${errLine()}</div>`;
 }
 function avatarGrid(uid) {
   const r = S.room, mine = r.players[uid]?.av, taken = Object.values(r.players).filter(p => p.uid !== uid).map(p => p.av);
@@ -1542,7 +1551,10 @@ function avatarGrid(uid) {
 function viewAvPick() {
   const uid = S.avEdit, p = S.room.players[uid];
   return `${bar()}
-  <div class="panel"><div class="status"><h2>Taupe de ${esc(p.name)}</h2>${avatar(uid, "lg")}</div>${avatarGrid(uid)}
+  <div class="panel"><div class="status"><h2>Taupe de ${esc(p.name)}</h2>${avatar(uid, "lg")}</div>
+    <div class="row"><input type="text" id="renameInput" class="grow" maxlength="20" value="${esc(p.name)}" aria-label="Prénom" data-enter="rename" data-u="${esc(uid)}" autocomplete="off">
+      <button data-a="rename" data-u="${esc(uid)}">Renommer</button></div>${errLine()}
+    ${avatarGrid(uid)}
     <button class="primary" data-a="avClose">Terminé</button></div>`;
 }
 const wordSize = w => String(w || "").length > 20 ? "xlong" : String(w || "").length > 13 ? "long" : "";
@@ -1973,7 +1985,7 @@ function buildBurrows() {
 }
 buildBurrows();
 function render() {
-  const keep = ["pseudo", "joinCode", "clueInput", "guessInput", "newPlayer", "chatInput", "pairA", "pairB", "pairH"].map(id => {
+  const keep = ["pseudo", "joinCode", "clueInput", "guessInput", "newPlayer", "chatInput", "pairA", "pairB", "pairH", "renameInput"].map(id => {
     const el = document.getElementById(id); return el ? [id, el.value, document.activeElement === el, el.selectionStart] : null;
   }).filter(Boolean);
   let html, screen; S.chatSide = "";
@@ -2075,6 +2087,12 @@ const ACTIONS = {
   },
   pickAv: el => send({ type: "avatar", uid: el.dataset.u, av: +el.dataset.v }),
   cycleAv: el => { S.avEdit = el.dataset.u; render(); },
+  rename: el => {
+    const name = (document.getElementById("renameInput")?.value || "").trim().slice(0, 20); if (!name) return;
+    const uid = el.dataset.u || S.avEdit || S.uid;
+    if (!isLocal() && uid === S.uid) { S.pseudo = name; lsSet("uc_pseudo", name); }
+    send({ type: "rename", uid, name });
+  },
   avClose: () => { S.avEdit = null; render(); },
   proposeOpen: () => { S.page = "propose"; S.proposeSent = ""; S.err = ""; render(); },
   pageClose: () => { S.page = null; S.err = ""; render(); },
