@@ -1,8 +1,11 @@
 // Taupe : boîte à propositions de paires de mots.
 // À coller dans Google Sheets > Extensions > Apps Script, puis à déployer en « Application Web ».
 
-// ⚠️ Change ce mot de passe avant de déployer. Il n'est jamais visible dans le jeu.
-const ADMIN_PASSWORD = "change-moi";
+// Le mot de passe admin n'est PAS écrit ici : il est rangé dans les propriétés du script.
+// Apps Script > ⚙️ Paramètres du projet > Propriétés du script > Ajouter : nom ADMIN_PASSWORD, valeur = ton mot de passe.
+function adminPassword_() {
+  return PropertiesService.getScriptProperties().getProperty("ADMIN_PASSWORD") || "";
+}
 
 const SHEET_NAME = "Propositions";
 const HEADERS = ["id", "date", "mot1", "mot2", "indice", "theme_propose", "auteur", "statut", "theme_final"];
@@ -57,7 +60,9 @@ function doPost(e) {
     }
 
     // Tout le reste est réservé à l'admin.
-    if (body.pw !== ADMIN_PASSWORD) return json_({ ok: false, error: "Mot de passe incorrect." });
+    const pw = adminPassword_();
+    if (!pw) return json_({ ok: false, error: "Aucun mot de passe admin n'est configuré dans le script." });
+    if (body.pw !== pw) return json_({ ok: false, error: "Mot de passe incorrect." });
 
     if (body.action === "list") {
       const all = rows_();
