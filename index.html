@@ -1372,7 +1372,7 @@ function viewPropose() {
       <input type="text" id="propB" maxlength="40" placeholder="Mot 2, proche (ex. Chien)" autocomplete="off">
       <input type="text" id="propH" maxlength="40" placeholder="Indice large pour le Fantôme (facultatif)" autocomplete="off">
       <label class="selrow"><span class="label">Thème conseillé</span>${themeSelect("propT", "classique")}</label>
-      <button class="primary" data-a="proposeSend" ${S.busy ? "disabled" : ""}>${S.busy ? "Envoi…" : "Envoyer ma proposition"}</button>
+      <button class="primary" data-a="proposeSend" ${S.busy ? "disabled" : ""}>${S.busy ? "Envoi…" : S.proposeForce ? "Envoyer quand même" : "Envoyer ma proposition"}</button>
     </div>
     ${errLine()}</div>`;
 }
@@ -2007,7 +2007,7 @@ function buildBurrows() {
 }
 buildBurrows();
 function render() {
-  const keep = ["pseudo", "joinCode", "clueInput", "guessInput", "newPlayer", "chatInput", "pairA", "pairB", "pairH", "renameInput"].map(id => {
+  const keep = ["pseudo", "joinCode", "clueInput", "guessInput", "newPlayer", "chatInput", "pairA", "pairB", "pairH", "renameInput", "propA", "propB", "propH"].map(id => {
     const el = document.getElementById(id); return el ? [id, el.value, document.activeElement === el, el.selectionStart] : null;
   }).filter(Boolean);
   let html, screen; S.chatSide = "";
@@ -2122,17 +2122,25 @@ const ACTIONS = {
     if (S.adminPw && !S.admin?.ok) { await ACTIONS.adminRefresh(); return; }
     render();
   },
-  proposeOpen: () => { S.page = "propose"; S.proposeSent = ""; S.err = ""; render(); },
+  proposeOpen: () => {
+    S.proposeForce = "";
+    if (SHEET_URL) fetch(SHEET_URL).then(r => r.json()).then(j => { if (j && j.ok) { lsSet("uc_community", JSON.stringify(j.accepted)); addCommunityPairs(j.accepted); } }).catch(() => {}); S.page = "propose"; S.proposeSent = ""; S.err = ""; render(); },
   pageClose: () => { S.page = null; S.err = ""; render(); },
   proposeSend: async () => {
     const a = (document.getElementById("propA")?.value || "").trim(), b = (document.getElementById("propB")?.value || "").trim();
     if (!a || !b) { S.err = "Écris les deux mots."; render(); return; }
-    for (const w of [a, b]) { const f = findWord(w); if (f) { S.err = `« ${w} » est déjà dans le jeu (${f.pair}, thème ${f.theme}). Propose une autre paire.`; render(); return; } }
+    for (const w of [a, b]) { const f = findWord(w); if (f) { S.err = `« ${w} » est déjà dans le jeu (${f.pair}, thème ${f.theme}). Propose une autre paire.`; S.proposeForce = ""; render(); return; } }
     if (norm(a) === norm(b)) { S.err = "Les deux mots doivent être différents."; render(); return; }
+    const key = norm(a) + "|" + norm(b), force = S.proposeForce === key;
+    if (!force) for (const w of [a, b]) {
+      const f = findWord(w, true);
+      if (f) { S.err = `« ${w} » ressemble beaucoup à « ${f.word} », déjà dans le jeu (${f.pair}, thème ${f.theme}). Si c'est bien un autre mot, clique sur « Envoyer quand même ».`; S.proposeForce = key; render(); return; }
+    }
     const hint = (document.getElementById("propH")?.value || "").trim(), theme = document.getElementById("propT")?.value || "classique";
     S.busy = true; S.err = ""; render();
     try {
-      const j = await sheetPost({ action: "propose", a, b, hint, theme, author: S.pseudo || "" });
+      const j = await sheetPost({ action: "propose", a, b, hint, theme, author: S.pseudo || "", force });
+      S.proposeForce = !j.ok && j.near ? key : "";
       if (j.ok) { S.proposeSent = a + " / " + b; ["propA", "propB", "propH"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; }); }
       else S.err = j.error || "L'envoi n'a pas marché.";
     } catch { S.err = "L'envoi n'a pas marché. Vérifie ta connexion internet."; }
@@ -2198,6 +2206,8 @@ app.addEventListener("click", e => {
   const el = e.target.closest("[data-a]"); if (!el || el.disabled) return;
   ACTIONS[el.dataset.a]?.(el);
 });
+// Typing another pair cancels a pending "send anyway".
+app.addEventListener("input", e => { if ((e.target.id === "propA" || e.target.id === "propB") && S.proposeForce) { S.proposeForce = ""; S.err = ""; render(); } });
 app.addEventListener("keydown", e => {
   if (e.key !== "Enter") return;
   const a = e.target.dataset?.enter; if (a) { e.preventDefault(); ACTIONS[a]?.(e.target); }
@@ -2209,11 +2219,25 @@ function loadSaved() {
 }
 // Pairs accepted by the owner join their theme for everyone.
 // Where a word already sits in the game (any theme, built-in or accepted), or null.
-function findWord(w) {
-  const n = norm(w); if (!n) return null;
-  for (const [k, t] of Object.entries(THEMES)) {
+// Same word ignoring case and accents; one letter of difference counts too for words of 5+ letters (typos).
+function closeWords(x, y) {
+  x = norm(x); y = norm(y);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  if (Math.min(x.length, y.length) < 5 || Math.abs(x.length - y.length) > 1) return false;
+  let i = 0, j = 0, diff = 0;
+  while (i < x.length && j < y.length) {
+    if (x[i] === y[j]) { i++; j++; continue; }
+    if (++diff > 1) return false;
+    if (x.length > y.length) i++; else if (y.length > x.length) j++; else { i++; j++; }
+  }
+  return diff + (x.length - i) + (y.length - j) <= 1;
+}
+function findWord(w, near) {
+  if (!norm(w)) return null;
+  for (const t of Object.values(THEMES)) {
     if (t.mix) continue;
-    for (const q of t.pairs) if (norm(q[0]) === n || norm(q[1]) === n) return { theme: t.label, pair: q[0] + " / " + q[1] };
+    for (const q of t.pairs) for (const x of [q[0], q[1]]) if (near ? closeWords(x, w) : norm(x) === norm(w)) return { theme: t.label, pair: q[0] + " / " + q[1], word: x };
   }
   return null;
 }

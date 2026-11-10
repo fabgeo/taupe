@@ -33,6 +33,21 @@ function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
+// Same word, ignoring case, accents, spaces and punctuation; a one-letter difference counts too for words of 5+ letters.
+const norm_ = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+function close_(x, y) {
+  x = norm_(x); y = norm_(y);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  if (Math.min(x.length, y.length) < 5 || Math.abs(x.length - y.length) > 1) return false;
+  let i = 0, j = 0, diff = 0;
+  while (i < x.length && j < y.length) {
+    if (x[i] === y[j]) { i++; j++; continue; }
+    if (++diff > 1) return false;
+    if (x.length > y.length) i++; else if (y.length > x.length) j++; else { i++; j++; }
+  }
+  return diff + (x.length - i) + (y.length - j) <= 1;
+}
 const clean_ = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u001f]/g, "").trim().slice(0, n);
 
 // Lecture publique : uniquement les paires acceptées.
@@ -51,8 +66,18 @@ function doPost(e) {
     if (body.action === "propose") {
       const a = clean_(body.a, 40), b = clean_(body.b, 40);
       if (!a || !b) return json_({ ok: false, error: "Il faut les deux mots." });
-      if (a.toLowerCase() === b.toLowerCase()) return json_({ ok: false, error: "Les deux mots doivent être différents." });
+      if (norm_(a) === norm_(b)) return json_({ ok: false, error: "Les deux mots doivent être différents." });
       const all = rows_();
+      // Same word already proposed: refused. Almost the same (one letter): the player is asked to confirm.
+      for (const r of all.filter(r => r.status === "attente" || r.status === "acceptee")) {
+        for (const w of [a, b]) {
+          const where = `${r.a} / ${r.b}${r.status === "acceptee" ? ", déjà accepté" : ", en attente de validation"}`;
+          const same = [r.a, r.b].find(x => norm_(x) === norm_(w));
+          if (same) return json_({ ok: false, error: `« ${w} » a déjà été proposé (${where}). Propose une autre paire.` });
+          const near = [r.a, r.b].find(x => close_(w, x));
+          if (near && !body.force) return json_({ ok: false, near: true, error: `« ${w} » ressemble beaucoup à « ${near} », déjà proposé (${where}). Si c'est bien un autre mot, clique sur « Envoyer quand même ».` });
+        }
+      }
       if (all.filter(r => r.status === "attente").length >= MAX_PENDING) return json_({ ok: false, error: "La boîte à idées est pleine pour le moment." });
       const theme = THEMES.includes(body.theme) ? body.theme : "classique";
       sheet_().appendRow([Utilities.getUuid().slice(0, 8), new Date(), a, b, clean_(body.hint, 40), theme, clean_(body.author, 20), "attente", ""]);
