@@ -388,6 +388,7 @@ select:focus { outline: none; border-color: var(--accent); }
 .burrow .tpeek.up .tp-rise { transform: translateY(0); }
 .slip .info { font-size: .76rem; color: var(--ink); opacity: .78; white-space: normal; max-width: 34ch; line-height: 1.35; }
 .words .info { display: block; font-size: .72rem; color: var(--muted); margin-top: 3px; line-height: 1.3; }
+.players.assign select { width: auto; min-width: 130px; padding: 8px 10px; }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -634,6 +635,12 @@ function freshRoom(code, host) {
     players: {}, clues: [], votes: [], inRound: [], order: [], alive: [] };
 }
 const listPlayers = G => Object.values(G.players).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+function manualProblem(G, m) {
+  const ids = listPlayers(G).map(p => p.uid).filter(id => m.roles?.[id] && m.roles[id] !== "spec");
+  if (ids.length < 2) return "Il faut au moins 2 joueurs qui jouent la manche.";
+  if (ids.filter(id => m.roles[id] === "traitor").length > 1) return "Un seul Traître par manche.";
+  return "";
+}
 function startProblem(G) {
   const n = listPlayers(G).length, s = G.settings, imp = s.uc + s.ghost;
   if (n < 3) return "Il faut au moins 3 joueurs.";
@@ -653,9 +660,10 @@ function pickCustom(G) {
   }
   return null;
 }
-function startManche(G, local) {
-  const s = G.settings, custom = local ? null : pickCustom(G);
-  const ids = shuffle(listPlayers(G).map(p => p.uid).filter(id => !custom || id !== custom.by));
+// manual (admin mode): { roles: { uid: "civil" | "uc" | "ghost" | "traitor" | "spec" }, special } chosen by the host.
+function startManche(G, local, manual) {
+  const s = G.settings, custom = local || manual ? null : pickCustom(G);
+  const ids = shuffle(listPlayers(G).map(p => p.uid).filter(id => manual ? manual.roles?.[id] && manual.roles[id] !== "spec" : !custom || id !== custom.by));
   if (s.theme === "netflix") s.theme = "film";
   const chosen = THEMES[s.theme] ? s.theme : "classique";
   const sources = THEMES[chosen].mix ? Object.keys(THEMES).filter(k => !THEMES[k].mix) : [chosen];
@@ -673,10 +681,18 @@ function startManche(G, local) {
   const n = ids.length, imp = s.uc + s.ghost;
   const pool = Math.random() >= freqOf(s)[2] ? [] : ["noTaupe", "double",
     ...(n - imp - 1 > imp + 1 ? ["ghostPlus"] : []), ...(!local ? [...((s.timer ?? 30) > 0 ? ["express"] : []), "simul"] : []), ...(imp >= 1 && n - imp >= 3 ? ["traitor"] : [])];
-  const special = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
-  const nUc = special === "noTaupe" ? 0 : s.uc, nGhost = special === "noTaupe" ? 0 : s.ghost + (special === "ghostPlus" ? 1 : 0);
-  ids.forEach((id, i) => { roles[id] = { role: i < nUc ? "uc" : i < nUc + nGhost ? "ghost" : "civil" }; });
-  const traitor = special === "traitor" ? shuffle(ids.filter(id => roles[id].role === "civil"))[0] : null;
+  let special = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+  let traitor = null;
+  if (manual) {
+    ids.forEach(id => { const r = manual.roles[id]; roles[id] = { role: r === "uc" || r === "ghost" ? r : "civil" }; });
+    traitor = ids.find(id => manual.roles[id] === "traitor") || null;
+    special = traitor ? "traitor" : (["double", "express", "simul"].includes(manual.special) && (local ? manual.special === "double" : true) ? manual.special : null);
+    if (!ids.some(id => roles[id].role !== "civil") && !traitor) special = "noTaupe";
+  } else {
+    const nUc = special === "noTaupe" ? 0 : s.uc, nGhost = special === "noTaupe" ? 0 : s.ghost + (special === "ghostPlus" ? 1 : 0);
+    ids.forEach((id, i) => { roles[id] = { role: i < nUc ? "uc" : i < nUc + nGhost ? "ghost" : "civil" }; });
+    traitor = special === "traitor" ? shuffle(ids.filter(id => roles[id].role === "civil"))[0] : null;
+  }
   const order = speakingOrder(ids, roles, G.lastFirst);
   G.lastFirst = order[0];
   ids.forEach(id => { if (G.scores[id] == null) G.scores[id] = 0; });
@@ -828,6 +844,7 @@ function apply(G, actor, a) {
     }
     case "start": {
       if (!host || st !== "lobby") return "";
+      if (a.manual) { const e = manualProblem(G, a.manual); if (e) return e; startManche(G, !!a.local, a.manual); return ""; }
       const p = startProblem(G); if (p) return p;
       startManche(G, !!a.local); return "";
     }
@@ -881,6 +898,7 @@ function apply(G, actor, a) {
     case "next":
       if (!host || st !== "roundEnd") return "";
       if (G.manche >= G.settings.manches) { G.status = "final"; return ""; }
+      if (a.manual) { const e = manualProblem(G, a.manual); if (e) return e; startManche(G, !!a.local, a.manual); return ""; }
       { const p = startProblem(G); if (p) return p + " Change les réglages ou les joueurs avant la manche suivante."; }
       startManche(G, !!a.local);
       return "";
@@ -908,6 +926,7 @@ function apply(G, actor, a) {
       else if (a.delta) G.settings.timer = cur ? Math.min(120, Math.max(5, cur + (a.delta > 0 ? 5 : -5))) : (G.settings.lastTimer || 30);
       return "";
     }
+    case "manualMode": if (host) G.settings.manual = !G.settings.manual; return "";
     case "specials": if (host && FREQS.some(f => f[0] === a.value)) G.settings.specialsFreq = a.value; return "";
     case "skipManche":
       if (!host || !["deal", "clues", "vote", "result", "ghostGuess"].includes(st)) return "";
@@ -916,10 +935,10 @@ function apply(G, actor, a) {
     case "newGame":
     case "replay": {
       if (!host) return "";
-      if (a.type === "replay") { const p = startProblem(G); if (p) return p; }
+      if (a.type === "replay") { const p = a.manual ? manualProblem(G, a.manual) : startProblem(G); if (p) return p; }
       Object.assign(G, { status: "lobby", manche: 0, scores: {}, clues: [], votes: [], inRound: [], order: [], alive: [],
         roles: null, words: null, lastOut: null, winner: null, chat: [], lastVotes: null, special: null, traitor: null, referee: null });
-      if (a.type === "replay") startManche(G, !!a.local);
+      if (a.type === "replay") startManche(G, !!a.local, a.manual || null);
       return "";
     }
   }
@@ -1078,7 +1097,7 @@ async function hostRoom(name, resume) {
     else if (m.t === "bye") { if (G.players[uid]) G.players[uid].online = false; }
     else if (m.t === "act" && G.players[uid]) {
       const a = m.a || {};
-      if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal", "toVote", "theme", "mime", "specials", "timer", "replay", "skipManche"].includes(a.type)) return;
+      if (["kick", "set", "start", "skip", "resolve", "continue", "next", "newGame", "eliminate", "dealNext", "addLocal", "toVote", "theme", "mime", "specials", "timer", "replay", "skipManche", "manualMode"].includes(a.type)) return;
       const e = apply(G, uid, a);
       if (e) pub(topic("p", uid), { t: "err", m: e }, false);
       if (a.type === "leave") { lastSent.delete(uid); pub(topic("p", uid), null, true); }
@@ -1475,6 +1494,8 @@ function settingsPanel() {
       <div class="themes" role="radiogroup" aria-label="Thème des mots">${Object.entries(THEMES).map(([k, t]) =>
         `<button class="theme ${k === cur ? "on" : ""}" role="radio" aria-checked="${k === cur}" data-a="theme" data-v="${k}" ${h ? "" : "disabled"}>
           <b>${t.label}</b><span>${t.desc}</span></button>`).join("")}</div></div>
+    ${h ? `<button class="toggle ${S.room.settings.manual ? "on" : ""}" data-a="manualMode" role="switch" aria-checked="${!!S.room.settings.manual}">
+      <span><b>Mode admin</b><span>Avant chaque manche, tu choisis toi-même le rôle de chaque joueur et la manche spéciale.</span></span><i></i></button>` : ""}
     <div class="stack"><span class="label">Manches spéciales</span>
       <div class="freqs" role="radiogroup" aria-label="Fréquence des manches spéciales">${FREQS.map(([k, label]) => {
         const on = freqOf(S.room.settings)[0] === k;
@@ -1501,6 +1522,27 @@ function settingsPanel() {
     ${errLine()}</div>`;
 }
 const kickBtn = uid => `<button class="ghost x ${S.confirmKick === uid ? "danger-soft" : ""}" data-a="kick" data-u="${esc(uid)}">${S.confirmKick === uid ? (isLocal() ? "Confirmer ?" : "Exclure ?") : (isLocal() ? "Retirer" : "Exclure")}</button>`;
+const ASSIGN_ROLES = [["civil", "Civil"], ["uc", "Taupe"], ["ghost", "Fantôme"], ["traitor", "Traître"], ["spec", "Ne joue pas"]];
+function suggestRoles() {
+  const s = S.room.settings, ids = shuffle(players().map(p => p.uid)), roles = {};
+  ids.forEach((id, i) => { roles[id] = i < s.uc ? "uc" : i < s.uc + s.ghost ? "ghost" : "civil"; });
+  return roles;
+}
+function openAssign(type) { S.assign = { type, roles: suggestRoles(), special: "" }; S.err = ""; render(); }
+function viewAssign() {
+  const A = S.assign, ps = players();
+  const specials = [["", "Aucune"], ["double", "Points doublés"], ...(isLocal() ? [] : [["express", "Chrono express"], ["simul", "Indices simultanés"]])];
+  return `${bar()}
+  <div class="panel"><div class="status"><h2>Mode admin</h2><span class="label">Visible par toi seul</span></div>
+    <p class="small muted">Choisis le rôle de chaque joueur pour la manche. « Ne joue pas » le met de côté pour cette manche. Les mots sont tirés au hasard dans le thème choisi.</p>
+    <ul class="players assign">${ps.map(p => `<li>${avatar(p.uid)}<span class="name">${esc(p.name)}${you(p.uid)}</span>
+      <select id="role-${esc(p.uid)}" data-a="assignRole" data-u="${esc(p.uid)}" aria-label="Rôle de ${esc(p.name)}">${ASSIGN_ROLES.map(([k, l]) => `<option value="${k}" ${A.roles[p.uid] === k ? "selected" : ""}>${l}</option>`).join("")}</select></li>`).join("")}</ul>
+    <label class="selrow"><span class="label">Manche spéciale</span><select id="assignSpecial">${specials.map(([k, l]) => `<option value="${k}" ${A.special === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+    <p class="small muted">Un Traître active automatiquement la manche Traître (avec un maire secret en ligne). Si personne n'est Taupe ni Fantôme, c'est une manche « Pas de Taupe ».</p>
+    <div class="row"><button class="ghost grow" data-a="assignRandom">🎲 Tirer au hasard</button><button class="ghost grow" data-a="assignCancel">Annuler</button></div>
+    <button class="primary" data-a="assignGo">Lancer la manche</button>
+    ${errLine()}</div>`;
+}
 function viewEdit() {
   const r = S.room, ps = players();
   const playing = id => (r.inRound || []).includes(id), out = id => playing(id) && !r.alive.includes(id);
@@ -2019,7 +2061,9 @@ function render() {
     if (S.editing) screen = "edit";
     if (S.avEdit && !S.room.players[S.avEdit]) S.avEdit = null;
     if (S.avEdit) screen = "av";
-    html = S.avEdit ? viewAvPick() : S.editing ? viewEdit() : S.peek ? viewPeek() : ({ lobby: viewLobby, deal: viewDeal, clues: viewClues, vote: viewVote, result: viewResult, ghostGuess: viewGhostGuess, roundEnd: viewRoundEnd, final: viewFinal }[S.room.status] || viewLobby)();
+    if (S.assign && !isHost()) S.assign = null;
+    if (S.assign) screen = "assign";
+    html = S.assign ? viewAssign() : S.avEdit ? viewAvPick() : S.editing ? viewEdit() : S.peek ? viewPeek() : ({ lobby: viewLobby, deal: viewDeal, clues: viewClues, vote: viewVote, result: viewResult, ghostGuess: viewGhostGuess, roundEnd: viewRoundEnd, final: viewFinal }[S.room.status] || viewLobby)();
   }
   if (S.chatSide) { html = `<div class="cols"><div class="maincol">${html}</div><aside class="sidecol">${S.chatSide}</aside></div>`; S.chatSide = ""; }
   app.classList.toggle("wide", html.includes('class="cols"'));
@@ -2072,7 +2116,18 @@ const ACTIONS = {
     isLocal() ? send({ type: "kick", uid }) : kick(uid);
   },
   set: el => send({ type: "set", key: el.dataset.k, delta: +el.dataset.d }),
-  start: () => send({ type: "start" }),
+  start: () => S.room.settings.manual ? openAssign("start") : send({ type: "start" }),
+  manualMode: () => send({ type: "manualMode" }),
+  assignRole: () => {},
+  assignRandom: () => { S.assign.roles = suggestRoles(); render(); },
+  assignCancel: () => { S.assign = null; S.err = ""; render(); },
+  assignGo: () => {
+    const roles = {}; players().forEach(p => { roles[p.uid] = document.getElementById("role-" + p.uid)?.value || "civil"; });
+    const special = document.getElementById("assignSpecial")?.value || "";
+    const type = S.assign.type; S.assign = null;
+    send({ type, manual: { roles, special } });
+    if (S.err) { S.assign = { type, roles, special }; render(); }
+  },
   dealReady: () => { S.dealReady = true; render(); },
   dealNext: () => { S.dealReady = false; send({ type: "dealNext" }); },
   reveal: () => { S.revealed = !S.revealed; render(); },
@@ -2153,9 +2208,9 @@ const ACTIONS = {
   resolve: () => send({ type: "resolve" }),
   guess: () => { const g = takeInput("guessInput"); if (g) send({ type: "guess", guess: g }); },
   continue: () => send({ type: "continue" }),
-  next: () => send({ type: "next" }),
+  next: () => S.room.settings.manual && S.room.manche < S.room.settings.manches ? openAssign("next") : send({ type: "next" }),
   newGame: () => send({ type: "newGame" }),
-  replay: () => send({ type: "replay" }),
+  replay: () => S.room.settings.manual ? openAssign("replay") : send({ type: "replay" }),
   copyLink: async () => {
     try { await navigator.clipboard.writeText(inviteText()); S.copied = true; render(); setTimeout(() => { S.copied = false; render(); }, 2000); }
     catch { const el = document.getElementById("inviteLink"); if (el) { el.focus(); el.select(); } }
@@ -2179,6 +2234,12 @@ setInterval(() => {
 app.addEventListener("click", e => {
   const el = e.target.closest("[data-a]"); if (!el || el.disabled) return;
   ACTIONS[el.dataset.a]?.(el);
+});
+// Keep the admin's role choices when the screen refreshes.
+app.addEventListener("change", e => {
+  if (!S.assign) return;
+  if (e.target.id?.startsWith("role-")) S.assign.roles[e.target.id.slice(5)] = e.target.value;
+  if (e.target.id === "assignSpecial") S.assign.special = e.target.value;
 });
 app.addEventListener("keydown", e => {
   if (e.key !== "Enter") return;
