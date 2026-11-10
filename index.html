@@ -388,6 +388,10 @@ select:focus { outline: none; border-color: var(--accent); }
 .burrow .tpeek.up .tp-rise { transform: translateY(0); }
 .slip .info { font-size: .76rem; color: var(--ink); opacity: .78; white-space: normal; max-width: 34ch; line-height: 1.35; }
 .words .info { display: block; font-size: .72rem; color: var(--muted); margin-top: 3px; line-height: 1.3; }
+.adminbtn { align-self: center; font-size: .9rem; }
+.linklike { background: none; border: 0; padding: 4px 0 0; color: var(--muted); font-size: .75rem; text-decoration: underline; font-weight: 400; }
+.prop.dup { border-color: rgba(240,168,72,.6); }
+.dupwarn { color: #F0A848; font-size: .82rem; font-weight: 700; }
 .champion { color: var(--accent); text-shadow: 0 0 30px var(--glow); }
 </style>
 
@@ -1378,7 +1382,11 @@ function viewAdmin() {
   <div class="panel"><h2>Espace admin</h2><p class="small muted">Réservé au créateur du jeu.</p>
     <div class="row"><input type="password" id="adminPw" class="grow" placeholder="Mot de passe" data-enter="adminLogin" autocomplete="current-password">
       <button class="primary" data-a="adminLogin" ${S.busy ? "disabled" : ""}>Entrer</button></div>${errLine()}</div>`;
-  const card = p => `<li class="prop">
+  const dupOf = p => [p.a, p.b].map(w => { const f = findWord(w); return f ? `« ${esc(w)} » est déjà dans le jeu (${esc(f.pair)}, ${esc(f.theme)})` : ""; }).filter(Boolean);
+  const twice = p => A.pending.filter(q => q.id !== p.id && [norm(q.a), norm(q.b)].sort().join("|") === [norm(p.a), norm(p.b)].sort().join("|")).length;
+  const card = p => { const d = dupOf(p), t = twice(p); return `<li class="prop ${d.length ? "dup" : ""}">
+      ${d.length ? `<p class="dupwarn">⚠️ ${d.join("<br>⚠️ ")}. Si tu acceptes, cette paire sera ignorée par le jeu : corrige le mot ou refuse.</p>` : ""}
+      ${t ? `<p class="small muted">Proposée aussi ${t} autre${t > 1 ? "s" : ""} fois.</p>` : ""}
       <div class="propgrid">
         <input type="text" id="a-${esc(p.id)}" value="${esc(p.a)}" maxlength="40" aria-label="Mot 1">
         <input type="text" id="b-${esc(p.id)}" value="${esc(p.b)}" maxlength="40" aria-label="Mot 2">
@@ -1387,7 +1395,7 @@ function viewAdmin() {
       </div>
       <span class="small muted">Par ${esc(p.author || "anonyme")} · thème conseillé : ${esc((THEME_PICK.find(t => t[0] === p.theme) || [, "?"])[1])}</span>
       <div class="row"><button class="primary grow" data-a="adminReview" data-id="${esc(p.id)}" data-d="accept">Accepter</button>
-        <button class="ghost grow" data-a="adminReview" data-id="${esc(p.id)}" data-d="reject">Refuser</button></div></li>`;
+        <button class="ghost grow" data-a="adminReview" data-id="${esc(p.id)}" data-d="reject">Refuser</button></div></li>`; };
   return `<div class="bar"><span class="label">Admin</span><span class="row barbtns"><button class="ghost" data-a="adminRefresh">Actualiser</button><button class="ghost" data-a="pageClose">Retour</button></span></div>
   <div class="panel"><div class="status"><h2>Propositions</h2><span class="label"><b>${A.pending.length}</b> en attente</span></div>
     <p class="small muted">Corrige les mots si besoin, choisis le thème, puis accepte ou refuse.</p>
@@ -1432,8 +1440,10 @@ function viewHome() {
   ${SHEET_URL ? `<div class="panel"><div class="status"><h3>Une idée de paire ?</h3><span class="label">Boîte à idées</span></div>
     <p class="small muted">Propose deux mots proches. S'ils sont validés, ils arrivent dans le jeu pour tout le monde.</p>
     <button data-a="proposeOpen">💡 Proposer une paire</button></div>` : ""}
+  ${SHEET_URL && lsGet("uc_admin") ? `<button class="ghost adminbtn" data-a="adminOpen">🔑 Espace admin · propositions de mots</button>` : ""}
   <p class="credits">Taupe est un jeu amateur et gratuit, sans lien avec les marques, œuvres et personnes citées comme mots à deviner.<br>
-    Images : <a href="https://fr.wikipedia.org" target="_blank" rel="noopener">Wikipédia</a> et Wikimedia Commons, sous licences libres (auteurs et licences indiqués sur la page de chaque image).</p>`;
+    Images : <a href="https://fr.wikipedia.org" target="_blank" rel="noopener">Wikipédia</a> et Wikimedia Commons, sous licences libres (auteurs et licences indiqués sur la page de chaque image).
+    ${SHEET_URL && !lsGet("uc_admin") ? `<br><button class="linklike" data-a="adminOpen">Admin</button>` : ""}</p>`;
 }
 function bar() {
   const net = S.mode === "guest" && S.net === "hostaway" && S.room
@@ -2106,11 +2116,19 @@ const ACTIONS = {
     send({ type: "rename", uid, name });
   },
   avClose: () => { S.avEdit = null; render(); },
+  adminOpen: async () => {
+    S.page = "admin"; S.err = "";
+    try { S.adminPw = S.adminPw || sessionStorage.getItem("uc_adminpw") || ""; } catch {}
+    if (S.adminPw && !S.admin?.ok) { await ACTIONS.adminRefresh(); return; }
+    render();
+  },
   proposeOpen: () => { S.page = "propose"; S.proposeSent = ""; S.err = ""; render(); },
   pageClose: () => { S.page = null; S.err = ""; render(); },
   proposeSend: async () => {
     const a = (document.getElementById("propA")?.value || "").trim(), b = (document.getElementById("propB")?.value || "").trim();
     if (!a || !b) { S.err = "Écris les deux mots."; render(); return; }
+    for (const w of [a, b]) { const f = findWord(w); if (f) { S.err = `« ${w} » est déjà dans le jeu (${f.pair}, thème ${f.theme}). Propose une autre paire.`; render(); return; } }
+    if (norm(a) === norm(b)) { S.err = "Les deux mots doivent être différents."; render(); return; }
     const hint = (document.getElementById("propH")?.value || "").trim(), theme = document.getElementById("propT")?.value || "classique";
     S.busy = true; S.err = ""; render();
     try {
@@ -2128,7 +2146,7 @@ const ACTIONS = {
     S.busy = true; S.err = ""; render();
     try {
       const j = await sheetPost({ action: "list", pw: S.adminPw });
-      if (j.ok) S.admin = { ok: true, pending: j.pending, accepted: j.accepted };
+      if (j.ok) { S.admin = { ok: true, pending: j.pending, accepted: j.accepted }; lsSet("uc_admin", "1"); try { sessionStorage.setItem("uc_adminpw", S.adminPw); } catch {} }
       else { S.admin = null; S.err = j.error || "Accès refusé."; }
     } catch { S.err = "Impossible de joindre le tableau Google."; }
     S.busy = false; render();
@@ -2190,6 +2208,15 @@ function loadSaved() {
   try { const h = JSON.parse(lsGet("uc_hostgame") || "null"); S.savedHost = h && h.G && Date.now() - h.at < 6 * 3600e3 ? h : null; } catch { S.savedHost = null; }
 }
 // Pairs accepted by the owner join their theme for everyone.
+// Where a word already sits in the game (any theme, built-in or accepted), or null.
+function findWord(w) {
+  const n = norm(w); if (!n) return null;
+  for (const [k, t] of Object.entries(THEMES)) {
+    if (t.mix) continue;
+    for (const q of t.pairs) if (norm(q[0]) === n || norm(q[1]) === n) return { theme: t.label, pair: q[0] + " / " + q[1] };
+  }
+  return null;
+}
 function addCommunityPairs(list) {
   if (!Array.isArray(list)) return;
   for (const p of list) {
